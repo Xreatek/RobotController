@@ -1,0 +1,10 @@
+imageio==2.31.2
+MyQR==2.3.1
+netaddr==1.2.1
+netifaces==0.11.0
+numpy==1.21.6
+opencv-python==4.9.0.80
+Pillow==9.5.0
+robomaster==0.1.1.68
+LibWheel\opus_decoder-0.0.1-cp37-cp37m-win_amd64.whl
+LibWheel\libh264decoder-0.0.1-cp37-cp37m-win_amd64.whl

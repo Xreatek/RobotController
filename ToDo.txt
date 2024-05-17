@@ -1,0 +1,19 @@
+holding w drives forward
+holding a drives left
+
+holding w+a makes it go north-east
+
+Arrows rotate the robot
+
+be able to subscribe to data streams
+
+1
+2
+3
+4
+could do this R= Robot and the numbers are the 
+  -3 1 -4
+  2     3
+  -6 4 -7
+
+360 degree movement 
