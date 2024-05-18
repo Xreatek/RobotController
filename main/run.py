@@ -15,6 +15,7 @@ import RobotConn as RobotConnMod
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = E.ConnType.ExternalRouter
+        self.Speed
         
         #iykyk options
         self.ResizeMainFBFeed = True
@@ -110,15 +111,15 @@ while runnin.is_set():
             w2 += NormalSpeed
             w3 += NormalSpeed
             w4 += NormalSpeed
-        if AKey:
-            w1 += NormalSpeed 
-            w2 += NormalSpeed
-            w3 += NormalSpeed
-            w4 += NormalSpeed
+        if AKey: #up = + down = - (test if this actually works)
+            w1 += NormalSpeed #outward up
+            w2 += 0-NormalSpeed #inward down
+            w3 += NormalSpeed #inward up
+            w4 += 0-NormalSpeed #outward down
         if DKey:
-            w1 += NormalSpeed 
+            w1 += 0-NormalSpeed 
             w2 += NormalSpeed
-            w3 += NormalSpeed
+            w3 += 0-NormalSpeed
             w4 += NormalSpeed
         if SKey:
             w1 += 0-NormalSpeed 
