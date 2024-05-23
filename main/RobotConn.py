@@ -1,3 +1,4 @@
+import threading as td
 import traceback
 import time
 
@@ -12,6 +13,7 @@ import Enums as E
 class Connection:
     def __init__(self, runinEvnt ,ConnType) -> None:
         self.runnin = runinEvnt
+        self.ConFree = td.Event() #(connection not locked)problems may arise if more async threads comunicate with the sdk so that both resume at the same time then make async comunication func
         self.me = self._EstablishConn(ConnType)
         self.cam = self.me.camera
         self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_540P)
@@ -29,12 +31,16 @@ class Connection:
         elif ConnType == E.ConnType.RobotRoutor:
             RoConn.initialize(conn_type='ap') 
         print("Robot Version:{0}".format(RoConn.get_version()))
+        s.ConFree.set()
         return RoConn
     
     def Start_Cam_Buffer_Queue(self, WinFo, FrameQ, ReSize=True):
         while self.runnin.is_set():
             try:
-                cf = self.cam.read_cv2_image(timeout=1 , strategy='newest')
+                self.ConFree.wait()
+                self.ConFree.clear()
+                cf = self.cam.read_cv2_image(timeout=6 , strategy='newest')
+                self.ConFree.set()
                 cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
                 if ReSize:
                     cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))            
@@ -55,6 +61,7 @@ class Connection:
                     try:
                         FrameQ.put(cf, timeout=10)
                     except:
+                        print("Mayor pygame frame error")
                         self.runnin.clear()
                         break
                 continue

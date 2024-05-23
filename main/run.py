@@ -16,14 +16,16 @@ import RobotConn as RobotConnMod
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
-        self.NormalSpeed = 150 #rpm (keep in mind angle and speed are calculated the same)
-        self.TurnAngle = 50 #turning rpm
+        self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
+        self.TurnAngle = 60 #turning rpm
         
-        
-        #unstable options
+        #safety settings
         self.SafeMode = True
         self.MaxRPM = 200 #be carefull please..
+        
+        #unstable options
         self.FPSCap = 30
+        self.CamWin = True
         self.ResizeMainFBFeed = True
 
 sett = ConfigClass()
@@ -111,7 +113,10 @@ while runnin.is_set():
             try:
                 #print("stopmove")
                 time.sleep(0.1)
-                robot.chassis.drive_wheels(0,0,0,0, timeout=0)
+                RoConn.ConFree.wait()
+                RoConn.ConFree.clear()
+                robot.chassis.drive_wheels(0,0,0,0, timeout=2)
+                RoConn.ConFree.set()
                 ToldToStop = True
             except BaseException as e:
                 print("Could not send command.")
@@ -182,7 +187,10 @@ while runnin.is_set():
             #print("URW"+str(w1)+", ULW:"+str(w2)+", LLW:"+str(w3)+", LRW:"+str(w4))
             MoveRedo = time.time()+10
             
-            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=1)
+            RoConn.ConFree.wait()
+            RoConn.ConFree.clear()
+            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=2)
+            RoConn.ConFree.set()
             #robot.chassis.drive_speed(x,y,z, timeout=0)#x(Forward) y(Diagonal) z(Gay), seconds
             pw1, pw2, pw3, pw4 = w1, w2, w3, w4
             w1, w2, w3, w4 = 0, 0, 0, 0 #sets them at begin of movement
