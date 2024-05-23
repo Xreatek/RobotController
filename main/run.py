@@ -14,7 +14,7 @@ import RobotConn as RobotConnMod
 #SETTINGS
 class ConfigClass:
     def __init__(self):
-        self.ConnectionType = ConnType.InternalRobotRoutor
+        self.ConnectionType = ConnType.ExternalRouter
         self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
         self.FastSpeed = 160
         self.TurnAngle = 60 #turning rpm
@@ -51,6 +51,13 @@ screen = window()
 
 clock = pygame.time.Clock()
 
+#set default values
+ToldToStop, FirstCamFrame, NewFrame = False, False, False
+pw1, pw2, pw3, pw4 = 0, 0, 0, 0 #movement values
+w1, w2, w3, w4 = 0, 0, 0, 0 #prev movement vals
+
+
+
 #INITIATE ROBOT MODULES
 #camera
 if sett.CamWin:
@@ -62,25 +69,28 @@ RoLed = robot.led
 RoChas = robot.chassis
 RoBat = robot.battery
 
-def GetPro(pro):
-    print(pro)
-
-RoBat.sub_battery_info(1,GetPro)
-
-
 RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint(1, 150), effect=led.EFFECT_ON) #test conn with leds
-
-#set default values
-ToldToStop = False
-FirstCamFrame = False
-NewFrame = False
+def GetPerc(procent, s):
+        s.procent = procent
+class SubbedIntrFuncClass:
+    def __init__(s):
+        s.procent = int() #battery procentage
+        
+        #subscribe Subscriber functions 
+        RoBat.sub_battery_info(1,GetPerc, s)
+        
+        #subscribe functions
     
-#Frame = 0
-pw1, pw2, pw3, pw4 = 0, 0, 0, 0 #movement values
-w1, w2, w3, w4 = 0, 0, 0, 0 #se #prev movements
+SubVals = SubbedIntrFuncClass()
+
+
+#def GetPro(pro):
+#    print(pro)
+#
+#RoBat.sub_battery_info(1,GetPro)
 
 while runnin.is_set():
- 
+    
     #WKey, AKey, SKey, DKey = False, False, False, False
     mk = 0 #(pressed movement keys)
     #poll events
@@ -123,6 +133,10 @@ while runnin.is_set():
     
     ArmOpen = keys[pygame.K_5]
     ArmClose = keys[pygame.K_6]
+    #info keys
+    PowerRead = keys[pygame.K_p]
+    if PowerRead:
+        print(f"Current power procentage: {str(SubVals.procent)}%")
 
     #Chasis movement
     if mk > 2:
