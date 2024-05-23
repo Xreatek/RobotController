@@ -8,7 +8,7 @@ import time
 from Enums import *
 from robomaster import led
 from robomaster import chassis
-from robomaster import battery
+from robomaster import robot as SeeRoFunction
 import RobotConn as RobotConnMod
 
 #SETTINGS
@@ -60,6 +60,13 @@ if sett.CamWin:
 #led
 RoLed = robot.led
 RoChas = robot.chassis
+RoBat = robot.battery
+
+def GetPro(pro):
+    print(pro)
+
+RoBat.sub_battery_info(1,GetPro)
+
 
 RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint(1, 150), effect=led.EFFECT_ON) #test conn with leds
 
@@ -108,7 +115,14 @@ while runnin.is_set():
     SlowTurn = keys[pygame.K_LCTRL]
     FastMove = keys[pygame.K_LSHIFT]
     #Arm Keys
-    up
+    ArmUp = keys[pygame.K_1]
+    ArmDown = keys[pygame.K_2]
+    
+    ArmOut = keys[pygame.K_3]
+    Armin = keys[pygame.K_4]
+    
+    ArmOpen = keys[pygame.K_5]
+    ArmClose = keys[pygame.K_6]
 
     #Chasis movement
     if mk > 2:
