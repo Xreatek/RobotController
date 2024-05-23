@@ -34,7 +34,7 @@ class Connection:
     def Start_Cam_Buffer_Queue(self, WinFo, FrameQ, ReSize=True):
         while self.runnin.is_set():
             try:
-                cf = self.cam.read_cv2_image(timeout=120 , strategy='newest')
+                cf = self.cam.read_cv2_image(timeout=1 , strategy='newest')
                 cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
                 if ReSize:
                     cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))            
