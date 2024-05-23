@@ -4,7 +4,6 @@ import traceback
 import pygame
 from random import randint
 import time
-import datetime
 
 from Enums import *
 from robomaster import led
@@ -15,16 +14,18 @@ import RobotConn as RobotConnMod
 #SETTINGS
 class ConfigClass:
     def __init__(self):
-        self.ConnectionType = ConnType.ExternalRouter
+        self.ConnectionType = ConnType.InternalRobotRoutor
         self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
+        self.FastSpeed = 160
         self.TurnAngle = 60 #turning rpm
+        self.SlowAngle =  25
         
         #safety settings
         self.SafeMode = True
-        self.MaxRPM = 200 #be carefull please..
+        self.MaxRPM = 225 #be carefull please..
         
         #unstable options
-        self.FPSCap = 30
+        self.FPSCap = 60
         self.CamWin = True
         self.ResizeMainFBFeed = True
 
@@ -52,9 +53,10 @@ clock = pygame.time.Clock()
 
 #INITIATE ROBOT MODULES
 #camera
-FrameQueue = queue.Queue(2)
-CamBufThread = td.Thread(target=RoConn.Start_Cam_Buffer_Queue, args=(screen, FrameQueue, sett.ResizeMainFBFeed))
-CamBufThread.start()
+if sett.CamWin:
+    FrameQueue = queue.Queue(2)
+    CamBufThread = td.Thread(target=RoConn.Start_Cam_Buffer_Queue, args=(screen, FrameQueue, sett.ResizeMainFBFeed))
+    CamBufThread.start()
 #led
 RoLed = robot.led
 RoChas = robot.chassis
@@ -63,10 +65,8 @@ RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint
 
 #set default values
 ToldToStop = False
-SupFmTm = sett.FPSCap/1000
-lft = time.monotonic #get miliseconds
 FirstCamFrame = False
-SupAnglMovSetFps = ()
+NewFrame = False
     
 #Frame = 0
 pw1, pw2, pw3, pw4 = 0, 0, 0, 0 #movement values
@@ -100,10 +100,15 @@ while runnin.is_set():
     #angle keys
     LAngleKey = keys[pygame.K_LEFT]
     RAngleKey = keys[pygame.K_RIGHT]
-    if mk == 0 and (LAngleKey or RAngleKey):
-        mk = 1
     
-    #print(mk)
+    SideKeys = LAngleKey+RAngleKey
+    if mk == 0 and SideKeys>0:
+        mk = 1
+    #Toggle Keys
+    SlowTurn = keys[pygame.K_LCTRL]
+    FastMove = keys[pygame.K_LSHIFT]
+    #Arm Keys
+    up
 
     #Chasis movement
     if mk > 2:
@@ -112,7 +117,6 @@ while runnin.is_set():
         if ToldToStop == False:
             try:
                 #print("stopmove")
-                time.sleep(0.1)
                 RoConn.ConFree.wait()
                 RoConn.ConFree.clear()
                 robot.chassis.drive_wheels(0,0,0,0, timeout=2)
@@ -130,38 +134,47 @@ while runnin.is_set():
         if mk > 1:
             offset = 1.6
         
+        if FastMove:
+            MoveSpeed =  sett.FastSpeed
+        else:
+            MoveSpeed = sett.NormalSpeed
+            
+        if SlowTurn:
+            AngleSpeed = sett.SlowAngle
+        else:
+            AngleSpeed = sett.TurnAngle
         
         if WKey: #w1 = Upper Right, w2= Upper Left, w3 = Lower Left, w4 = Lower Right (from back view of robot)
-            w1 += sett.NormalSpeed/offset
-            w2 += sett.NormalSpeed/offset
-            w3 += sett.NormalSpeed/offset
-            w4 += sett.NormalSpeed/offset
+            w1 += MoveSpeed/offset
+            w2 += MoveSpeed/offset
+            w3 += MoveSpeed/offset
+            w4 += MoveSpeed/offset
         if AKey: #up = + down = - (test if this actually works)
-            w1 += sett.NormalSpeed/offset #outward up
-            w2 += 0-(sett.NormalSpeed/offset)  #inward down
-            w3 += sett.NormalSpeed/offset #inward up
-            w4 += 0-(sett.NormalSpeed/offset) #outward down
+            w1 += MoveSpeed/offset #outward up
+            w2 += 0-(MoveSpeed/offset)  #inward down
+            w3 += MoveSpeed/offset #inward up
+            w4 += 0-(MoveSpeed/offset) #outward down
         if DKey:
-            w1 += 0-(sett.NormalSpeed/offset)
-            w2 += sett.NormalSpeed/offset
-            w3 += 0-(sett.NormalSpeed/offset)
-            w4 += sett.NormalSpeed/offset
+            w1 += 0-(MoveSpeed/offset)
+            w2 += MoveSpeed/offset
+            w3 += 0-(MoveSpeed/offset)
+            w4 += MoveSpeed/offset
         if SKey:
-            w1 += 0-sett.NormalSpeed/offset
-            w2 += 0-sett.NormalSpeed/offset
-            w3 += 0-sett.NormalSpeed/offset
-            w4 += 0-sett.NormalSpeed/offset
+            w1 += 0-MoveSpeed/offset
+            w2 += 0-MoveSpeed/offset
+            w3 += 0-MoveSpeed/offset
+            w4 += 0-MoveSpeed/offset
         
         if LAngleKey:#w1 = Upper Right, w2= Upper Left, w3 = Lower Left, w4 = Lower Right (from back view of robot)
-            w1 += sett.TurnAngle/offset #L
-            w4 += sett.TurnAngle/offset
-            w2 += 0-sett.TurnAngle/offset #R
-            w3 += 0-sett.TurnAngle/offset
+            w1 += AngleSpeed/offset #L
+            w4 += AngleSpeed/offset
+            w2 += 0-AngleSpeed/offset #R
+            w3 += 0-AngleSpeed/offset
         if RAngleKey:#w1 = Upper Right, w2= Upper Left, w3 = Lower Left, w4 = Lower Right (from back view of robot)
-            w1 += 0-sett.TurnAngle/offset #L
-            w4 += 0-sett.TurnAngle/offset
-            w2 += sett.TurnAngle/offset #R
-            w3 += sett.TurnAngle/offset
+            w1 += 0-AngleSpeed/offset #L
+            w4 += 0-AngleSpeed/offset
+            w2 += AngleSpeed/offset #R
+            w3 += AngleSpeed/offset
         
         if ((pw1 != pw1+w1) or (pw2 != pw2+w2) or (pw3 != pw3+w3) or (pw4 != pw4+w4)):#if movement values are different from last frame
             if sett.SafeMode: #saftey
@@ -199,31 +212,39 @@ while runnin.is_set():
         #    robot.chassis.drive_speed(px,py,pz, timeout=0)
             
     #(After events fired!) load things to show in window
+    if not sett.CamWin:
+        clock.tick(sett.FPSCap)
+        continue
+    
     if FirstCamFrame: #or it will show black and die
         CamFrame = PrevCamFrame
         try:
             CamFrame = FrameQueue.get_nowait()
             CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
-            PrevCamFrame = CamFrame
+            screen.s.blit(CamImg, (0,0))
+            NewFrame = True
+            #print("BlitedFrame!")
         except:
-            CamImg = pygame.image.frombuffer(PrevCamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+            NewFrame=False
+            #continue
+            #print("NoNewFrame")
+            #CamImg = pygame.image.frombuffer(PrevCamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
     else:
         CamFrame = FrameQueue.get()
         CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
         FirstCamFrame = True
         PrevCamFrame = CamFrame
-    
-    #render
-    screen.s.fill("gray")
-    screen.s.blit(CamImg, (0,0))
-    
+
     # flip() the display to put your work on screen
     #pygame.display.flip()
-    pygame.display.update()
+    #render
+    #screen.s.fill("gray")
+    if NewFrame:
+        pygame.display.update()
+        clock.tick(sett.FPSCap)  # limits FPS to 30
 
-    clock.tick(sett.FPSCap)  # limits FPS to 30
-
-FrameQueue.task_done()
+if sett.CamWin:
+    FrameQueue.task_done()
 
 runnin.clear()
 robot.close()

@@ -28,7 +28,7 @@ class Connection:
             IntrRobot.config.ROBOT_IP_STR = "192.168.34.223"
             
             RoConn.initialize(conn_type='sta')
-        elif ConnType == E.ConnType.RobotRoutor:
+        elif ConnType == E.ConnType.InternalRobotRoutor:
             RoConn.initialize(conn_type='ap') 
         print("Robot Version:{0}".format(RoConn.get_version()))
         s.ConFree.set()
@@ -39,11 +39,12 @@ class Connection:
             try:
                 self.ConFree.wait()
                 self.ConFree.clear()
-                cf = self.cam.read_cv2_image(timeout=6 , strategy='newest')
+                cf = self.cam.read_cv2_image(timeout=2 , strategy='newest')
                 self.ConFree.set()
                 cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
                 if ReSize:
-                    cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))            
+                    cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))
+                #print("FrameBuffered")       
             except Exception as e:
                 print("Cam FB Err: ", e)
                 self.runnin.clear()#stopping main run
@@ -51,8 +52,10 @@ class Connection:
 
             try:
                 if(FrameQ.qsize() < 2):
+                    #print("Put in queue:1")
                     FrameQ.put_nowait(cf)
                 else:
+                    #print("Put in queue:2")
                     FrameQ.get_nowait()
                     FrameQ.put_nowait(cf)
             except FrameQ.Empty as e:
@@ -69,7 +72,7 @@ class Connection:
                 print(traceback.format_exc())
                 print("Error :", e)
                 self.runnin.clear()
-            time.sleep(0.033) #0.033~30fps the specs it says the cam can do
+            #time.sleep(0.033) #0.033~30fps the specs it says the cam can do
         
         print("StoppedCamBuffer")
             
