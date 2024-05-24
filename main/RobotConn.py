@@ -28,7 +28,7 @@ class Connection:
             IntrRobot.config.ROBOT_IP_STR = "192.168.34.223"
             
             RoConn.initialize(conn_type='sta')
-        elif ConnType == E.ConnType.InternalRobotRoutor:
+        elif ConnType == E.ConnType.InternalRoutor:
             RoConn.initialize(conn_type='ap') 
         print("Robot Version:{0}".format(RoConn.get_version()))
         s.ConFree.set()

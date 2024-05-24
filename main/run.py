@@ -15,9 +15,9 @@ import RobotConn as RobotConnMod
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
-        self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
-        self.FastSpeed = 160
-        self.TurnAngle = 60 #turning rpm
+        self.NormalSpeed = 50 #rpm (keep in mind angle and speed are calculated the same)
+        self.FastSpeed = 200
+        self.TurnAngle = 70 #turning rpm
         self.SlowAngle =  25
         
         #safety settings
@@ -70,16 +70,27 @@ RoChas = robot.chassis
 RoBat = robot.battery
 
 RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint(1, 150), effect=led.EFFECT_ON) #test conn with leds
+
+#subscribe functions
 def GetPerc(procent, s):
         s.procent = procent
+        
+def GetPos(data, s):
+    s.Y_pos = data[0]
+    s.X_pos = data[1]
+    #print(f'Y_pos: {str(data[0])}, X_pos: {str(data[1])}')
+
 class SubbedIntrFuncClass:
     def __init__(s):
         s.procent = int() #battery procentage
+        s.Y_pos = float()
+        s.X_pos = float()
         
         #subscribe Subscriber functions 
-        RoBat.sub_battery_info(1,GetPerc, s)
+        RoBat.sub_battery_info(20,GetPerc, s)
+        RoChas.sub_position(0, 1, GetPos, s)
         
-        #subscribe functions
+        
     
 SubVals = SubbedIntrFuncClass()
 
