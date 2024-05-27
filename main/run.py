@@ -14,11 +14,12 @@ import RobotConn as RobotConnMod
 #SETTINGS
 class ConfigClass:
     def __init__(self):
-        self.ConnectionType = ConnType.ExternalRouter
-        self.NormalSpeed = 50 #rpm (keep in mind angle and speed are calculated the same)
+        self.ConnectionType = ConnType.InternalRoutor
+        self.NormalSpeed = 250 #rpm (keep in mind angle and speed are calculated the same)
         self.FastSpeed = 200
-        self.TurnAngle = 70 #turning rpm
+        self.TurnAngle = 80 #turning rpm
         self.SlowAngle =  25
+        self.ArmSpeed = 1
         
         #safety settings
         self.SafeMode = True
@@ -53,9 +54,9 @@ clock = pygame.time.Clock()
 
 #set default values
 ToldToStop, FirstCamFrame, NewFrame = False, False, False
+ArmBusy, ArmCmd = False, 0 #1:arm busy with cmd,
 pw1, pw2, pw3, pw4 = 0, 0, 0, 0 #movement values
 w1, w2, w3, w4 = 0, 0, 0, 0 #prev movement vals
-
 
 
 #INITIATE ROBOT MODULES
@@ -68,6 +69,8 @@ if sett.CamWin:
 RoLed = robot.led
 RoChas = robot.chassis
 RoBat = robot.battery
+RoArm = robot.robotic_arm
+RoGrip = robot.gripper
 
 RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint(1, 150), effect=led.EFFECT_ON) #test conn with leds
 
@@ -75,21 +78,28 @@ RoLed.set_led(comp=led.COMP_ALL, r=randint(1, 150), g=randint(1, 150), b=randint
 def GetPerc(procent, s):
         s.procent = procent
         
-def GetPos(data, s):
-    s.Y_pos = data[0]
-    s.X_pos = data[1]
-    #print(f'Y_pos: {str(data[0])}, X_pos: {str(data[1])}')
+def GetPos(ChasisC, s):
+    s.CY_pos = ChasisC[0]
+    s.CX_pos = ChasisC[1]
+    print(f'Y_pos: {str(ChasisC[0])}, X_pos: {str(ChasisC[1])}')
+    
+def GetArmPos(ArmC, s):
+    s.AY_pos = ArmC[0]
+    s.AX_pos = ArmC[1]
+    print(f'arm y:{str(ArmC[0])}, arm x:{str(ArmC[1])}')
 
 class SubbedIntrFuncClass:
     def __init__(s):
         s.procent = int() #battery procentage
-        s.Y_pos = float()
-        s.X_pos = float()
+        s.CY_pos = float()
+        s.CX_pos = float()
+        s.AY_pos = float()
+        s.AX_pos = float()
         
         #subscribe Subscriber functions 
         RoBat.sub_battery_info(20,GetPerc, s)
         RoChas.sub_position(0, 1, GetPos, s)
-        
+        RoArm.sub_position(1, GetArmPos, s)
         
     
 SubVals = SubbedIntrFuncClass()
@@ -100,8 +110,16 @@ SubVals = SubbedIntrFuncClass()
 #
 #RoBat.sub_battery_info(1,GetPro)
 
+#fun
+ArmY, ArmX, Claw = 0, 0, 0
+PArmY, PArmX, PClaw = 0,0,0
+RoConn.ConFree.wait()
+RoConn.ConFree.clear()
+RoArm.recenter()
+RoConn.ConFree.set()
+
 while runnin.is_set():
-    
+    #RoArm.moveto( x=0 , y=0 )
     #WKey, AKey, SKey, DKey = False, False, False, False
     mk = 0 #(pressed movement keys)
     #poll events
@@ -135,20 +153,87 @@ while runnin.is_set():
     #Toggle Keys
     SlowTurn = keys[pygame.K_LCTRL]
     FastMove = keys[pygame.K_LSHIFT]
-    #Arm Keys
-    ArmUp = keys[pygame.K_1]
-    ArmDown = keys[pygame.K_2]
     
-    ArmOut = keys[pygame.K_3]
-    Armin = keys[pygame.K_4]
+    #Arm 
+    ak = 0 #arm Keys (commands)
+    #ArmDownOpen = keys[pygame.K_1]
     
-    ArmOpen = keys[pygame.K_5]
-    ArmClose = keys[pygame.K_6]
+    ArmUp = keys[pygame.K_u]
+    if ArmUp: ak += 1
+    #if ArmUp: ak > 
+    ArmDown = keys[pygame.K_j]
+    if ArmDown: ak += 1
+    if ArmUp and ArmDown:
+        ak -= 2
+        ArmUp, ArmDown = False, False
+        
+    ArmIn = keys[pygame.K_h]
+    if ArmIn: ak += 1
+    ArmOut = keys[pygame.K_k]
+    if ArmOut: ak += 1
+    if ArmIn and ArmOut:
+        ak -= 2
+        ArmUp, ArmOut = False, False
+    
+    ArmOpen = keys[pygame.K_1]
+    if ArmOpen: ak += 1
+    ArmClose = keys[pygame.K_2]
+    if ArmClose: ak += 1
+    if ArmOpen and ArmClose:
+        ak -= 2
+        ArmOpen, ArmClose = False, False
+    
     #info keys
     PowerRead = keys[pygame.K_p]
     if PowerRead:
         print(f"Current power procentage: {str(SubVals.procent)}%")
+        RoConn.ConFree.wait()
+        RoConn.ConFree.clear()
+        RoArm.recenter()
+        RoConn.ConFree.set()
+        ArmY, ArmX, Claw = 0, 0, 0
 
+    #if ak > 0:
+    #    if ArmUp: ArmY += sett.ArmSpeed
+    #    if ArmDown: ArmY -= sett.ArmSpeed
+    #    if ArmOut: ArmX += sett.ArmSpeed
+    #    if ArmIn: ArmX -= sett.ArmSpeed
+    #    if ArmOpen: Claw += 10
+    #    if ArmClose: ArmY -= 10
+    #    try:
+    #        if ((PArmY != PArmY+ArmY) or (PArmX != PArmX+w2)):
+    #            RoConn.ConFree.wait()
+    #            RoConn.ConFree.clear()
+    #            RoArm.move( x=ArmX , y=ArmY )
+    #            RoConn.ConFree.set()
+    #            PArmX, PArmY = ArmX, ArmY
+    #        if PClaw != PClaw+Claw:
+    #            if Claw <= 0:
+    #                Claw = 0
+    #                PClaw = 0
+    #            if Claw >= 100:
+    #                Claw = 100
+    #                PClaw = 100
+    #            if Claw > 50:
+    #                RoConn.ConFree.wait()
+    #                RoConn.ConFree.clear()
+    #                RoGrip.Open(Claw)
+    #                RoConn.ConFree.set()
+    #            else:
+    #                RoConn.ConFree.wait()
+    #                RoConn.ConFree.clear()
+    #                RoGrip.Close(Claw)
+    #                RoConn.ConFree.set()
+    #            PClaw = Claw
+    #    except:
+    #        print("lol")
+            
+    ##Robot Arm
+    #if ArmBusy:
+    #    if ArmDownOpen:
+    #        print("CommandDownOpen")
+        
+    
     #Chasis movement
     if mk > 2:
         print("Too many keys pressed")
