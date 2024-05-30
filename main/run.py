@@ -21,6 +21,7 @@ robomaster.enable_logging_to_file()
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
+        
         self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
         self.FastSpeed = 180
         self.TurnAngle = 80 #turning rpm
