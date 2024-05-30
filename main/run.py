@@ -2,21 +2,27 @@ import threading as td
 import queue
 import traceback
 import pygame
+import cv2 as cv
 from random import randint
 import time
 
 from Enums import *
+import robomaster
 from robomaster import led
 from robomaster import chassis
 from robomaster import robot as SeeRoFunction
 import RobotConn as RobotConnMod
+from robomaster import exceptions
+
+#start logging
+robomaster.enable_logging_to_file()
 
 #SETTINGS
 class ConfigClass:
     def __init__(self):
-        self.ConnectionType = ConnType.InternalRoutor
-        self.NormalSpeed = 250 #rpm (keep in mind angle and speed are calculated the same)
-        self.FastSpeed = 200
+        self.ConnectionType = ConnType.ExternalRouter
+        self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
+        self.FastSpeed = 180
         self.TurnAngle = 80 #turning rpm
         self.SlowAngle =  25
         self.ArmSpeed = 1
@@ -61,10 +67,10 @@ w1, w2, w3, w4 = 0, 0, 0, 0 #prev movement vals
 
 #INITIATE ROBOT MODULES
 #camera
-if sett.CamWin:
-    FrameQueue = queue.Queue(2)
-    CamBufThread = td.Thread(target=RoConn.Start_Cam_Buffer_Queue, args=(screen, FrameQueue, sett.ResizeMainFBFeed))
-    CamBufThread.start()
+#if sett.CamWin:
+#    FrameQueue = queue.Queue(2)
+#    CamBufThread = td.Thread(target=RoConn.Start_Cam_Buffer_Queue, args=(screen, FrameQueue, sett.ResizeMainFBFeed))
+#    CamBufThread.start()
 #led
 RoLed = robot.led
 RoChas = robot.chassis
@@ -81,12 +87,12 @@ def GetPerc(procent, s):
 def GetPos(ChasisC, s):
     s.CY_pos = ChasisC[0]
     s.CX_pos = ChasisC[1]
-    print(f'Y_pos: {str(ChasisC[0])}, X_pos: {str(ChasisC[1])}')
+    #print(f'Y_pos: {str(ChasisC[0])}, X_pos: {str(ChasisC[1])}')
     
 def GetArmPos(ArmC, s):
-    s.AY_pos = ArmC[0]
-    s.AX_pos = ArmC[1]
-    print(f'arm y:{str(ArmC[0])}, arm x:{str(ArmC[1])}')
+    s.AY_pos = ArmC[1]
+    s.AX_pos = ArmC[0]
+    #print(f'Arm_Y:{str(ArmC[0])}, Arm_X:{str(ArmC[1])}')
 
 class SubbedIntrFuncClass:
     def __init__(s):
@@ -97,9 +103,9 @@ class SubbedIntrFuncClass:
         s.AX_pos = float()
         
         #subscribe Subscriber functions 
-        RoBat.sub_battery_info(20,GetPerc, s)
-        RoChas.sub_position(0, 1, GetPos, s)
-        RoArm.sub_position(1, GetArmPos, s)
+        #RoBat.sub_battery_info(20,GetPerc, s)
+        #RoChas.sub_position(0, 1, GetPos, s)
+        #RoArm.sub_position(3, GetArmPos, s)
         
     
 SubVals = SubbedIntrFuncClass()
@@ -115,7 +121,10 @@ ArmY, ArmX, Claw = 0, 0, 0
 PArmY, PArmX, PClaw = 0,0,0
 RoConn.ConFree.wait()
 RoConn.ConFree.clear()
-RoArm.recenter()
+try:
+    RoArm.moveto(x=0, y=80).wait_for_completed()
+except:
+    print("Arm Cordinates too much")
 RoConn.ConFree.set()
 
 while runnin.is_set():
@@ -187,10 +196,10 @@ while runnin.is_set():
     PowerRead = keys[pygame.K_p]
     if PowerRead:
         print(f"Current power procentage: {str(SubVals.procent)}%")
-        RoConn.ConFree.wait()
-        RoConn.ConFree.clear()
-        RoArm.recenter()
-        RoConn.ConFree.set()
+        #RoConn.ConFree.wait()
+        #RoConn.ConFree.clear()
+        #RoArm.moveto(x=0, y=80).wait_for_completed()
+        #RoConn.ConFree.set()
         ArmY, ArmX, Claw = 0, 0, 0
 
     #if ak > 0:
@@ -324,10 +333,11 @@ while runnin.is_set():
             #print("URW"+str(w1)+", ULW:"+str(w2)+", LLW:"+str(w3)+", LRW:"+str(w4))
             MoveRedo = time.time()+10
             
-            RoConn.ConFree.wait()
-            RoConn.ConFree.clear()
-            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=2)
-            RoConn.ConFree.set()
+            #RoConn.ConFree.wait()
+            #RoConn.ConFree.clear()
+            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=3)
+            robot.action_dispatcher.get_msg_by_action
+            #RoConn.ConFree.set()
             #robot.chassis.drive_speed(x,y,z, timeout=0)#x(Forward) y(Diagonal) z(Gay), seconds
             pw1, pw2, pw3, pw4 = w1, w2, w3, w4
             w1, w2, w3, w4 = 0, 0, 0, 0 #sets them at begin of movement
@@ -336,39 +346,52 @@ while runnin.is_set():
         #    robot.chassis.drive_speed(px,py,pz, timeout=0)
             
     #(After events fired!) load things to show in window
-    if not sett.CamWin:
-        clock.tick(sett.FPSCap)
-        continue
+    #if not sett.CamWin:
+    #    clock.tick(sett.FPSCap)
+    #    continue
     
-    if FirstCamFrame: #or it will show black and die
-        CamFrame = PrevCamFrame
-        try:
-            CamFrame = FrameQueue.get_nowait()
-            CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
-            screen.s.blit(CamImg, (0,0))
-            NewFrame = True
-            #print("BlitedFrame!")
-        except:
-            NewFrame=False
-            #continue
-            #print("NoNewFrame")
-            #CamImg = pygame.image.frombuffer(PrevCamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
-    else:
-        CamFrame = FrameQueue.get()
-        CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
-        FirstCamFrame = True
-        PrevCamFrame = CamFrame
+    cf = RoConn.cam.read_video_frame(timeout=10 , strategy='newest')
+    #self.ConFree.set()
+    cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
+    if sett.ResizeMainFBFeed:
+        cf = cv.resize(cf, (screen.MaxXDim, screen.MaxYDim))
+    CamImg = pygame.image.frombuffer(cf, (screen.MaxXDim, screen.MaxYDim),"RGB")
+    if FirstCamFrame:
+        FirstCamFrame = False
+        
+    screen.s.blit(CamImg, (0,0))
+        
+    #if FirstCamFrame: #or it will show black and die
+    #    CamFrame = PrevCamFrame
+    #    try:
+    #        CamFrame = FrameQueue.get_nowait() 
+    #        CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #        screen.s.blit(CamImg, (0,0))
+    #        NewFrame = True
+    #        #print("BlitedFrame!")
+    #    except:
+    #        NewFrame=False
+    #        #continue
+    #        #print("NoNewFrame")
+    #        #CamImg = pygame.image.frombuffer(PrevCamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #else:
+    #    try:
+    #        CamFrame = FrameQueue.get()#starting only
+    #    except Exception:
+    #        continue
+    #    CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #    FirstCamFrame = True
+    #    PrevCamFrame = CamFrame
 
     # flip() the display to put your work on screen
     #pygame.display.flip()
     #render
     #screen.s.fill("gray")
-    if NewFrame:
-        pygame.display.update()
-        clock.tick(sett.FPSCap)  # limits FPS to 30
+    pygame.display.update()
+    clock.tick(sett.FPSCap)  # limits FPS to 30
 
-if sett.CamWin:
-    FrameQueue.task_done()
+#if sett.CamWin:
+#    FrameQueue.task_done()
 
 runnin.clear()
 robot.close()

@@ -10,7 +10,7 @@ QRCODE_NAME = "qrcode.png"
 if __name__ == '__main__':
 
     helper = conn.ConnectionHelper()
-    info = helper.build_qrcode_string(ssid="XipsGalaxyS22", password="BestPassword")
+    info = helper.build_qrcode_string(ssid="SUMMA-IoT", password="Zo7rXu4dJI") #Zo7rXu4dJI
     myqr.run(words=info)
     time.sleep(1)
     img = Image.open(QRCODE_NAME)

@@ -9,8 +9,8 @@ if __name__ == '__main__':
     RouterConn = True #connected via routed:True, Direct Connection:False
     
     if RouterConn: #Note: school network isnt supported (use hotspot)
-        robot.config.LOCAL_IP_STR = "192.168.181.144" #pc local ip
-        robot.config.ROBOT_IP_STR = "192.168.181.223" #robots local ip
+        robot.config.LOCAL_IP_STR = "10.249.48.12" #pc local ip
+        robot.config.ROBOT_IP_STR = "10.249.48.13" #robots local ip ([10.249.48.13]:3JKCK5C00308CM serial), 
         
         ep_robot = robot.Robot()
         ep_robot.initialize(conn_type='sta')

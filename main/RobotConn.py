@@ -16,7 +16,7 @@ class Connection:
         self.ConFree = td.Event() #(connection not locked)problems may arise if more async threads comunicate with the sdk so that both resume at the same time then make async comunication func
         self.me = self._EstablishConn(ConnType)
         self.cam = self.me.camera
-        self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_540P)
+        self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_360P)
         
         #return self
         
@@ -24,10 +24,10 @@ class Connection:
         RoConn = IntrRobot.Robot()
         if ConnType == E.ConnType.ExternalRouter:
             #if needed can set custom ips
-            IntrRobot.config.LOCAL_IP_STR = "192.168.34.144"
-            IntrRobot.config.ROBOT_IP_STR = "192.168.34.223"
+            IntrRobot.config.LOCAL_IP_STR = "10.249.48.12"
+            IntrRobot.config.ROBOT_IP_STR = "10.249.48.13"
             
-            RoConn.initialize(conn_type='sta')
+            RoConn.initialize(conn_type='sta', proto_type="tcp")
         elif ConnType == E.ConnType.InternalRoutor:
             RoConn.initialize(conn_type='ap') 
         print("Robot Version:{0}".format(RoConn.get_version()))
@@ -37,42 +37,52 @@ class Connection:
     def Start_Cam_Buffer_Queue(self, WinFo, FrameQ, ReSize=True):
         while self.runnin.is_set():
             try:
-                self.ConFree.wait()
-                self.ConFree.clear()
-                cf = self.cam.read_cv2_image(timeout=2 , strategy='newest')
-                self.ConFree.set()
+                #self.ConFree.wait()
+                #self.ConFree.clear()
+                cf = self.cam.read_cv2_image(timeout=10 , strategy='newest')
+                #self.ConFree.set()
                 cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
                 if ReSize:
                     cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))
-                #print("FrameBuffered")       
+                #print("FrameBuffered")   
+            except TimeoutError as e:
+                print("Timed out getting new frame.")
+                continue    
             except Exception as e:
                 print("Cam FB Err: ", e)
                 self.runnin.clear()#stopping main run
                 break
 
-            try:
-                if(FrameQ.qsize() < 2):
-                    #print("Put in queue:1")
-                    FrameQ.put_nowait(cf)
-                else:
-                    #print("Put in queue:2")
-                    FrameQ.get_nowait()
-                    FrameQ.put_nowait(cf)
-            except FrameQ.Empty as e:
-                print("Queue was emptied while putting in queue")
-                if self.runnin.is_set():
-                    try:
-                        FrameQ.put(cf, timeout=10)
-                    except:
-                        print("Mayor pygame frame error")
-                        self.runnin.clear()
-                        break
-                continue
-            except Exception as e:
-                print(traceback.format_exc())
-                print("Error :", e)
-                self.runnin.clear()
-            #time.sleep(0.033) #0.033~30fps the specs it says the cam can do
+            #try:
+            #    FrameQ.put_nowait(cf)
+            #    #if(FrameQ.qsize() < 2):
+            #    #    #print("Put in queue:1")
+            #    #    FrameQ.put_nowait(cf)
+            #    #else:
+            #    #    print("Clearing Queue")
+            #    #    with FrameQ.mutex:
+            #    #        FrameQ.queue.clear()
+            #    #    FrameQ.put_nowait(cf)
+            #except FrameQ.Empty as e:
+            #    print("Queue was emptied while putting in queue")
+            #    FrameQ.get()
+            #    #with FrameQ.mutex:
+            #    #    FrameQ.queue.clear()
+            #    #if self.runnin.is_set():
+            #        #try:
+            #        #    FrameQ.put(cf, timeout=10)
+            #        #except:
+            #        #    print("Mayor pygame frame error")
+            #        #    self.runnin.clear()
+            #        #    break
+            #    #continue
+            #except Exception as e:
+            #    print(traceback.format_exc())
+            #    print(e.with_traceback())
+            #    print("Error :", e)
+            #    self.runnin.clear()
+            #time.sleep(0.5)
+            ##time.sleep(0.033) #0.033~30fps the specs it says the cam can do
         
         print("StoppedCamBuffer")
             
