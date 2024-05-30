@@ -15,10 +15,9 @@ class Connection:
         self.runnin = runinEvnt
         self.ConFree = td.Event() #(connection not locked)problems may arise if more async threads comunicate with the sdk so that both resume at the same time then make async comunication func
         self.me = self._EstablishConn(ConnType)
+        self.APType = ConnType
         self.cam = self.me.camera
         self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_360P)
-        
-        #return self
         
     def _EstablishConn(s, ConnType):
         RoConn = IntrRobot.Robot()
@@ -51,41 +50,19 @@ class Connection:
             except Exception as e:
                 print("Cam FB Err: ", e)
                 self.runnin.clear()#stopping main run
-                break
-
-            #try:
-            #    FrameQ.put_nowait(cf)
-            #    #if(FrameQ.qsize() < 2):
-            #    #    #print("Put in queue:1")
-            #    #    FrameQ.put_nowait(cf)
-            #    #else:
-            #    #    print("Clearing Queue")
-            #    #    with FrameQ.mutex:
-            #    #        FrameQ.queue.clear()
-            #    #    FrameQ.put_nowait(cf)
-            #except FrameQ.Empty as e:
-            #    print("Queue was emptied while putting in queue")
-            #    FrameQ.get()
-            #    #with FrameQ.mutex:
-            #    #    FrameQ.queue.clear()
-            #    #if self.runnin.is_set():
-            #        #try:
-            #        #    FrameQ.put(cf, timeout=10)
-            #        #except:
-            #        #    print("Mayor pygame frame error")
-            #        #    self.runnin.clear()
-            #        #    break
-            #    #continue
-            #except Exception as e:
-            #    print(traceback.format_exc())
-            #    print(e.with_traceback())
-            #    print("Error :", e)
-            #    self.runnin.clear()
-            #time.sleep(0.5)
-            ##time.sleep(0.033) #0.033~30fps the specs it says the cam can do
-        
+                break  
+    
         print("StoppedCamBuffer")
             
+def RobotFoundNewAP(rs):
+    if rs.runnin.is_set():
+        #rs.me.reset()
+        rs.cam.stop_video_stream()
+        rs.me.close()
+        time.sleep(10)
+        v1 , v2 = rs.runnin, rs.APType
+        return Connection(v1, v2)
+
 if __name__ == "__main__":
     import run
     run
