@@ -29,7 +29,7 @@ if __name__ == '__main__':
             ep_led.set_led(comp=rm.led.COMP_ALL, r=0, g=0, b=0, effect=rm.led.EFFECT_OFF)
         
         #before hotswap
-        ep_led.set_led(comp=rm.led.COMP_ALL, r=255, g=255, b=255, effect=rm.led.EFFECT_ON)
+        ep_led.set_led(comp=rm.led.COMP_ALL, r=255, g=0, b=0, effect=rm.led.EFFECT_ON)
         
         #during hotswap
         print("Hot Swaping...")

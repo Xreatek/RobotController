@@ -1,0 +1,46 @@
+PS X:\ROBOMASTER\BigStep\ProjectEnv> & x:/ROBOMASTER/BigStep/ProjectEnv/Scripts/python.exe x:/ROBOMASTER/BigStep/ProjectEnv/main/run.py
+pygame 2.5.2 (SDL 2.28.3, Python 3.7.0)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+2024-05-31 12:58:38,228 ERROR conn.py:266 SdkConnection: reject connection, service is busy!
+2024-05-31 12:58:38,228 ERROR robot.py:1354 Robot: Connection Failed, Please Check Hareware Connections!!! conn_type sta, host ('10.249.48.12', 10257), target ('10.249.48.13', 20020).
+2024-05-31 12:58:38,228 ERROR client.py:70 Client: __init__, create Connection, exception: module 'robomaster.config' has no attribute 'DEFAULT_CONN_PROTO'
+2024-05-31 12:58:38,230 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+2024-05-31 12:58:38,230 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+2024-05-31 12:58:38,231 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+2024-05-31 12:58:38,231 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+2024-05-31 12:58:38,231 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+Robot: Can not connect to robot, check connection please.
+Error establishing connection:exceptions must derive from BaseException | trace: Traceback (most recent call last):
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\client.py", line 93, in remote_addr
+    return self._conn.target_addr
+AttributeError: 'NoneType' object has no attribute 'target_addr'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "x:\ROBOMASTER\BigStep\ProjectEnv\main\RobotConn.py", line 37, in _EstablishConn
+    RoConn.initialize(conn_type='sta', proto_type="tcp")
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\robot.py", line 1327, in initialize
+    self._ftp.connect(self.ip)
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\robot.py", line 1157, in ip
+    return self.client.remote_addr[0]
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\client.py", line 95, in remote_addr
+    raise print('Robot: Can not connect to robot, check connection please.')
+TypeError: exceptions must derive from BaseException
+
+2024-05-31 12:58:38,238 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+Robot Version:None
+2024-05-31 12:58:38,238 ERROR client.py:153 Client: send_sync_msg, client recv_task is not running.
+2024-05-31 12:58:38,239 ERROR camera.py:285 Camera: start_video_stream, stream_sdk(1) failed!
+Traceback (most recent call last):
+  File "x:/ROBOMASTER/BigStep/ProjectEnv/main/run.py", line 47, in <module>
+    RoConn = RobotConnMod.Connection(runnin, sett.ConnectionType) #not sure if runin will trigger globally if stored in class
+  File "x:\ROBOMASTER\BigStep\ProjectEnv\main\RobotConn.py", line 24, in __init__
+    t = self.cam.read_video_frame(timeout=4 , strategy='newest')
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\camera.py", line 58, in read_video_frame
+    return self._liveview.read_video_frame(timeout, strategy)
+  File "X:\ROBOMASTER\BigStep\ProjectEnv\lib\site-packages\robomaster\media.py", line 100, in read_video_frame
+    return self._video_frame_queue.get(timeout=timeout)
+  File "C:\Users\xipie\AppData\Local\Programs\Python\Python37\lib\queue.py", line 178, in get
+    raise Empty
+_queue.Empty

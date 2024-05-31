@@ -1,0 +1,50 @@
+Run.py: ( i left the function commented run at the start0
+#if FirstCamFrame: #or it will show black and die
+    #    CamFrame = PrevCamFrame
+    #    try:
+    #        CamFrame = FrameQueue.get_nowait() 
+    #        CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #        screen.s.blit(CamImg, (0,0))
+    #        NewFrame = True
+    #        #print("BlitedFrame!")
+    #    except:
+    #        NewFrame=False
+    #        #continue
+    #        #print("NoNewFrame")
+    #        #CamImg = pygame.image.frombuffer(PrevCamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #else:
+    #    try:
+    #        CamFrame = FrameQueue.get()#starting only
+    #    except Exception:
+    #        continue
+    #    CamImg = pygame.image.frombuffer(CamFrame, (screen.MaxXDim, screen.MaxYDim),"RGB") #cam frame
+    #    FirstCamFrame = True
+    #    PrevCamFrame = CamFrame
+
+    # flip() the display to put your work on screen
+    #pygame.display.flip()
+    #render
+    #screen.s.fill("gray")
+
+RobotConn.py:
+
+#def Start_Cam_Buffer_Queue(self, WinFo, FrameQ, ReSize=True):
+    #    while self.runnin.is_set():
+    #        try:
+    #            #self.ConFree.wait()
+    #            #self.ConFree.clear()
+    #            cf = self.cam.read_cv2_image(timeout=0 , strategy='newest')
+    #            #self.ConFree.set()
+    #            cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
+    #            if ReSize:
+    #                cf = cv.resize(cf, (WinFo.MaxXDim, WinFo.MaxYDim))
+    #            #print("FrameBuffered")   
+    #        except TimeoutError as e:
+    #            print("Timed out getting new frame.")
+    #            continue    
+    #        except Exception as e:
+    #            print("Cam FB Err: ", e)
+    #            self.runnin.clear()#stopping main run
+    #            break  
+    #
+    #    print("StoppedCamBuffer")

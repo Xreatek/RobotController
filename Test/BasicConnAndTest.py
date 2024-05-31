@@ -13,7 +13,7 @@ if __name__ == '__main__':
         robot.config.ROBOT_IP_STR = "10.249.48.13" #robots local ip ([10.249.48.13]:3JKCK5C00308CM serial), 
         
         ep_robot = robot.Robot()
-        ep_robot.initialize(conn_type='sta')
+        ep_robot.initialize(conn_type='sta', proto_type='UDP')
     else:
         ep_robot = robot.Robot()
         ep_robot.initialize(conn_type='ap') 
