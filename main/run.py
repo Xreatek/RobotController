@@ -164,7 +164,7 @@ while runnin.is_set():
         print("Escape Pressed")
         runnin.clear()
     #keys.index(pygame.K_w)
-    #keys
+    #keys for switch statement could add pressed keys to list then itterate over list length and use switch to find the appropriate response for the pressed key
     WKey = keys[pygame.K_w]
     if WKey: mk += 1
     DKey = keys[pygame.K_d]
@@ -173,6 +173,7 @@ while runnin.is_set():
     if AKey: mk += 1
     SKey = keys[pygame.K_s]
     if SKey: mk += 1
+    mk = WKey+DKey+AKey+SKey
     #angle keys
     LAngleKey = keys[pygame.K_LEFT]
     RAngleKey = keys[pygame.K_RIGHT]
