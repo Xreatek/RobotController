@@ -8,3 +8,4 @@ Pillow==9.5.0
 robomaster==0.1.1.68
 LibWheel\opus_decoder-0.0.1-cp37-cp37m-win_amd64.whl
 LibWheel\libh264decoder-0.0.1-cp37-cp37m-win_amd64.whl
+-U git+https://github.com/lithops-cloud/lithops.git@master
