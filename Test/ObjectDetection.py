@@ -9,7 +9,7 @@ dino = wf.add_task(name="infer_grounding_dino", auto_connect=True)
 
 dino.set_parameters({
     "model_name": "Swin-B",
-    "prompt": "wad",
+    "prompt": "paper wad",
     "conf_thres": "0.35",
     "conf_thres_text": "0.25"
 })
