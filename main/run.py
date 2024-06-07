@@ -6,6 +6,8 @@ import cv2 as cv
 from random import randint
 import time
 
+import robomaster.robot
+
 from Enums import *
 import robomaster
 from robomaster import led
@@ -22,20 +24,21 @@ class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
         self.Opperator = OpTypes.Human
-        self.NormalSpeed = 80 #rpm (keep in mind angle and speed are calculated the same)
-        self.FastSpeed = 200
+        self.NormalSpeed = 100 #rpm (keep in mind angle and speed are calculated the same)
+        self.FastSpeed = 400
         self.TurnAngle = 80 #turning rpm
         self.SlowAngle =  25
         self.ArmSpeed = 1
         
         #safety settings
-        self.SafeMode = True
+        self.SafeMode = False
         self.MaxRPM = 225 #be carefull please..
         
         #unstable options
+        self.FrameMissingReconn = 30 #amount of times queue can be empty before reconnection
         self.FPSRecon = 15
-        self.ReconTimeout = 5
-        self.FPSCap = 60
+        self.ReconTimeout = 8
+        self.FPSCap = 15
         self.CamWin = True
         self.ResizeMainFBFeed = True
 
@@ -44,7 +47,7 @@ sett = ConfigClass()
 runnin = td.Event()
 runnin.set()
 
-RoConn = RobotConnMod.Connection(runnin, sett.ConnectionType) #not sure if runin will trigger globally if stored in class
+RoConn = RobotConnMod.Connection(runnin, sett.ConnectionType, sett) #not sure if runin will trigger globally if stored in class
 robot = RoConn.me #get the robot
 
 #modules are initialized
@@ -62,8 +65,8 @@ screen = window()
 clock = pygame.time.Clock()
 
 #set default values
-ToldToStop, FirstCamFrame, NewFrame, ReconnState = False, False, False, False
-ArmBusy, ArmCmd, ReConnTimeout = False, 0, (time.time()+sett.ReconTimeout) #1:arm busy with cmd,
+ToldToStop, FirstCamFrame, NewFrame, ReconnState, ArmChanged = False, False, False, False, False
+ArmBusy, ArmCmd, ReConnTimeout, FrameTry = False, 0, (time.time()+sett.ReconTimeout), 0
 pw1, pw2, pw3, pw4 = 0, 0, 0, 0 #movement values
 w1, w2, w3, w4 = 0, 0, 0, 0 #prev movement vals
 
@@ -87,12 +90,23 @@ def GetPos(ChasisC, s):
     #print(f'Y_pos: {str(ChasisC[0])}, X_pos: {str(ChasisC[1])}')
     
 def GetArmPos(ArmC, s):
-    s.AY_pos = ArmC[1]
-    s.AX_pos = ArmC[0]
-    #print(f'Arm_Y:{str(ArmC[0])}, Arm_X:{str(ArmC[1])}')
+    NegGlitchZero = 4294967297 #this is because of a glitch cuz the moron developers of this 💩 sdk are using a unsigned int for coordinates
+    NegDetect = 2147483648 #2^31 so it will catch negative numbers
+    print("armpos")
+    #print(str(0-1))
+    if ArmC[0] > NegDetect: 
+        s.AX_pos = ArmC[0] - NegGlitchZero
+    else:
+        s.AX_pos = ArmC[0]
+        
+    if ArmC[1] > NegDetect:
+        s.AY_pos =  ArmC[1] - NegGlitchZero
+    else:
+        s.AY_pos = ArmC[1]
+    print(f'Arm_Y:{s.AY_pos}, Arm_X:{s.AX_pos}')
 
 class SubbedIntrFuncClass:
-    def __init__(s):
+    def __init__(s, RoConn):
         s.procent = int() #battery procentage
         s.CY_pos = float()
         s.CX_pos = float()
@@ -100,11 +114,15 @@ class SubbedIntrFuncClass:
         s.AX_pos = float()
         
         #subscribe Subscriber functions 
-        #RoBat.sub_battery_info(20,GetPerc, s)
-        #RoChas.sub_position(0, 1, GetPos, s)
-        #RoArm.sub_position(3, GetArmPos, s)
+        #make sure to re-sub after restart
+        RoConn.me.battery.sub_battery_info(1,GetPerc, s)
+        RoConn.me.chassis.sub_position(0, 1, GetPos, s)
+        RoConn.me.robotic_arm.sub_position(1, GetArmPos, s)
         
-SubVals = SubbedIntrFuncClass()
+SubVals = SubbedIntrFuncClass(RoConn)
+#RoArm = RoConn.me.robotic_arm
+#RoArm.sub_position(5, GetArmPos, SubVals)
+
 
 #Functions
 def RoReConn(OldConn, ReconnState):
@@ -117,14 +135,15 @@ def RoReConn(OldConn, ReconnState):
             #robot.reset_robot_mode()
             RoConn = RobotConnMod.RobotCloseOldAP(OldConn)
             #Reseting all variables
-            RoConn = RobotConnMod.Connection(runnin, sett.ConnectionType) 
+            RoConn = RobotConnMod.Connection(runnin, sett.ConnectionType, sett) 
             robot = RoConn.me
             #robot.led.set_led(comp=led.COMP_ALL, r=5, g=240, b=20, effect=led.EFFECT_ON)
             robot.led.set_led(comp=led.COMP_ALL, r=randint(1, 200), g=randint(1, 200), b=randint(1, 200), effect=led.EFFECT_ON) #test conn with leds
-            robot.reset()
+            #robot.reset()
             print(f"Reconnected! Took {str(time.time()-ReconTime)} sec.")
             ReconnState = False
-            return RoConn, robot
+            SubVals = SubbedIntrFuncClass(RoConn)
+            return RoConn, robot, SubVals
         except Exception as e:
             print(f'RoReConn Func Error! | {e}')
             runnin.clear()
@@ -138,13 +157,14 @@ def RoReConn(OldConn, ReconnState):
 #fun
 ArmY, ArmX, Claw = 0, 0, 0
 PArmY, PArmX, PClaw = 0,0,0
-RoConn.ConFree.wait()
-RoConn.ConFree.clear()
+
+#RoConn.ConFree.wait()
+#RoConn.ConFree.clear()
 try:
-    robot.robotic_arm.moveto(x=0, y=80).wait_for_completed()
+    robot.robotic_arm.moveto(x=50, y=20).wait_for_completed(timeout=4)
 except Exception as e:
     print("Arm Cordinates too much", e)
-RoConn.ConFree.set()
+#RoConn.ConFree.set()
 
 while runnin.is_set():
     #RoArm.moveto( x=0 , y=0 )
@@ -185,35 +205,6 @@ while runnin.is_set():
     SlowTurn = keys[pygame.K_LCTRL]
     FastMove = keys[pygame.K_LSHIFT]
     
-    #Arm 
-    ak = 0 #arm Keys (commands)
-    #ArmDownOpen = keys[pygame.K_1]
-    
-    ArmUp = keys[pygame.K_u]
-    if ArmUp: ak += 1
-    #if ArmUp: ak > 
-    ArmDown = keys[pygame.K_j]
-    if ArmDown: ak += 1
-    if ArmUp and ArmDown:
-        ak -= 2
-        ArmUp, ArmDown = False, False
-        
-    ArmIn = keys[pygame.K_h]
-    if ArmIn: ak += 1
-    ArmOut = keys[pygame.K_k]
-    if ArmOut: ak += 1
-    if ArmIn and ArmOut:
-        ak -= 2
-        ArmUp, ArmOut = False, False
-    
-    ArmOpen = keys[pygame.K_1]
-    if ArmOpen: ak += 1
-    ArmClose = keys[pygame.K_2]
-    if ArmClose: ak += 1
-    if ArmOpen and ArmClose:
-        ak -= 2
-        ArmOpen, ArmClose = False, False
-    
     #info keys
     PowerRead = keys[pygame.K_p]
     if PowerRead:
@@ -222,12 +213,47 @@ while runnin.is_set():
         #RoConn.ConFree.clear()
         #RoArm.moveto(x=0, y=80).wait_for_completed()
         #RoConn.ConFree.set()
-        ArmY, ArmX, Claw = 0, 0, 0
+        #ArmY, ArmX, Claw = 0, 0, 0
         
     ReConnKey = keys[pygame.K_m]
     if ReConnKey:
-        RoConn, robot = RoReConn(RoConn, ReconnState)
+        RoConn, robot, SubVals = RoReConn(RoConn, ReconnState)
         ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
+        
+    def ArmCarry(RoConn):
+        print("armShouldmove")
+        #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
+        RoConn.me.robotic_arm.moveto(0,80).wait_for_completed(timeout=3)
+        
+    def OpenHand(RoConn, Power=100):
+        #SeeRoFunction.gripper.Gripper.open(0)
+        RoConn.me.gripper.open(Power)
+    
+    def CloseHand(RoConn, Power=100):
+        #SeeRoFunction.gripper.Gripper.close()
+        RoConn.me.gripper.close(Power)
+        
+    def ArmPickUp(RoConn):
+        RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
+        RoConn.me.robotic_arm.moveto(180,-60).wait_for_completed(timeout=3) #Y,X
+        
+        
+        
+    if keys[pygame.K_1]:
+        print("OpenHand")
+        OpenHand(RoConn)
+        
+    if keys[pygame.K_2]:
+        print("CloseHand")
+        CloseHand(RoConn)
+    
+    if keys[pygame.K_3]:
+        print("Carry Arm")
+        ArmCarry(RoConn)
+    
+    if keys[pygame.K_4]:
+        print("PickUp Arm")
+        ArmPickUp(RoConn)
 
     #if ak > 0:
     #    if ArmUp: ArmY += sett.ArmSpeed
@@ -279,7 +305,7 @@ while runnin.is_set():
                 #print("stopmove")
                 RoConn.ConFree.wait()
                 RoConn.ConFree.clear()
-                robot.chassis.drive_wheels(0,0,0,0, timeout=0)
+                robot.chassis.drive_wheels(0,0,0,0, timeout=3)
                 RoConn.ConFree.set()
                 ToldToStop = True
             except Exception as e:
@@ -362,7 +388,7 @@ while runnin.is_set():
             
             #RoConn.ConFree.wait()
             #RoConn.ConFree.clear()
-            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=0)
+            robot.chassis.drive_wheels(w1,w2,w3,w4, timeout=3)
             #robot.action_dispatcher.get_msg_by_action
             #RoConn.ConFree.set()
             #robot.chassis.drive_speed(x,y,z, timeout=0)#x(Forward) y(Diagonal) z(Gay), seconds
@@ -373,12 +399,12 @@ while runnin.is_set():
         #    robot.chassis.drive_speed(px,py,pz, timeout=0)
             
     #(After events fired!) load things to show in window
-    #if not sett.CamWin:
-    #    clock.tick(sett.FPSCap)
-    #    continue
+    if not sett.CamWin:
+        clock.tick(sett.FPSCap)
+        continue
     try:
-        cf = RoConn.cam.read_video_frame(timeout=1 , strategy='newest') #camera stream
-        #cf = RoConn.cam.read_cv2_image(timeout=1, strategy="newest") #image taken
+        #cf = RoConn.cam.Re(timeout=1 , strategy='newest') #camera stream
+        cf = RoConn.cam.read_cv2_image(strategy="newest") #image taken
         #self.ConFree.set()
         cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
         if sett.ResizeMainFBFeed:
@@ -388,14 +414,18 @@ while runnin.is_set():
             FirstCamFrame = False
         screen.s.blit(CamImg, (0,0))
     except Exception as e:
-        print("Cam Display Error:", e)
-        if not FirstCamFrame:
-            RoConn, robot = RoReConn(RoConn, ReconnState)
+        print(f'FrameQueue Error:{e}, Trace: {traceback.format_exc()}')
+        if not FirstCamFrame and FrameTry >= sett.FrameMissingReconn:
+            FrameTry = 0
+            #RoConn, robot, SubVals = RoReConn(RoConn, ReconnState)
             ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
+        else:
+            FrameTry += 1
+    FrameTry = 0
     
     #print(clock.get_fps())
     if (clock.get_fps() <= sett.FPSRecon) and (time.time() > ReConnTimeout):
-        RoConn, robot = RoReConn(RoConn, ReconnState)
+        #RoConn, robot, SubVals = RoReConn(RoConn, ReconnState)
         ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
     
     pygame.display.update()

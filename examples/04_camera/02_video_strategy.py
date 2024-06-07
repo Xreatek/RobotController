@@ -37,3 +37,20 @@ if __name__ == '__main__':
     ep_camera.stop_video_stream()
 
     ep_robot.close()
+    
+    ep_robot = robot.Robot()
+    ep_robot.initialize(conn_type="sta")
+
+    ep_camera = ep_robot.camera
+
+    # 每次获取最新的1帧图像显示，并停留1秒
+    ep_camera.start_video_stream(display=False)
+    for i in range(0, 10):
+        img = ep_camera.read_cv2_image(strategy="newest")
+        cv2.imshow("Robot", img)
+        cv2.waitKey(1)
+        time.sleep(1)
+    cv2.destroyAllWindows()
+    ep_camera.stop_video_stream()
+
+    ep_robot.close()

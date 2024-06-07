@@ -24,6 +24,8 @@ def sub_data_handler(sub_info):
 
 
 if __name__ == '__main__':
+    robot.config.LOCAL_IP_STR = "10.249.48.12"
+    robot.config.ROBOT_IP_STR = "10.249.48.13"
     ep_robot = robot.Robot()
     ep_robot.initialize(conn_type="sta")
 
