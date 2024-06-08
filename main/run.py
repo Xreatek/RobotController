@@ -153,8 +153,26 @@ def RoReConn(OldRoConn, ReconnState, sett):
 ArmY, ArmX, Claw = 0, 0, 0
 PArmY, PArmX, PClaw = 0,0,0
 
-#RoConn.ConFree.wait()
-#RoConn.ConFree.clear()
+#Arm Movements
+def ArmCarry(RoConn):
+    print("armShouldmove")
+    #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
+    RoConn.me.robotic_arm.moveto(0,80).wait_for_completed(timeout=3)
+    cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
+    
+def OpenHand(RoConn, Power=100):
+    #SeeRoFunction.gripper.Gripper.open(0)
+    RoConn.me.gripper.open(Power)
+    
+def CloseHand(RoConn, Power=100):
+    #SeeRoFunction.gripper.Gripper.close()
+    RoConn.me.gripper.close(Power)
+    
+def ArmPickUp(RoConn):
+    RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
+    RoConn.me.robotic_arm.moveto(180,-60).wait_for_completed(timeout=3) #Y,X 
+    cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
+
 try:
     robot.robotic_arm.moveto(x=50, y=20).wait_for_completed(timeout=4)
 except Exception as e:
@@ -212,27 +230,9 @@ while runnin.is_set():
     ReConnKey = keys[pygame.K_m]
     if ReConnKey:
         RoConn, robot, SubVals = RoReConn(RoConn, ReconnState, sett)
-        ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
-        
-    def ArmCarry(RoConn):
-        print("armShouldmove")
-        #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
-        RoConn.me.robotic_arm.moveto(0,80).wait_for_completed(timeout=3)
-        
-    def OpenHand(RoConn, Power=100):
-        #SeeRoFunction.gripper.Gripper.open(0)
-        RoConn.me.gripper.open(Power)
+        ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection        
+
     
-    def CloseHand(RoConn, Power=100):
-        #SeeRoFunction.gripper.Gripper.close()
-        RoConn.me.gripper.close(Power)
-        
-    def ArmPickUp(RoConn):
-        RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
-        RoConn.me.robotic_arm.moveto(180,-60).wait_for_completed(timeout=3) #Y,X
-        
-        
-        
     if keys[pygame.K_1]:
         print("OpenHand")
         OpenHand(RoConn)
@@ -354,9 +354,6 @@ while runnin.is_set():
         #    robot.chassis.drive_speed(px,py,pz, timeout=0)
             
     #(After events fired!) load things to show in window
-    if not sett.CamWin:
-        clock.tick(sett.FPSCap)
-        continue
     try:
         print("getting image")
         #cf = RoConn.cam.Re(timeout=1 , strategy='newest') #camera stream
@@ -378,7 +375,6 @@ while runnin.is_set():
             ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
         else:
             FrameTry += 1
-            screen.s.fill((255,255,255))
     FrameTry = 0
     
     #print(clock.get_fps())
