@@ -95,7 +95,7 @@ def GetArmPos(ArmC, s):
         s.AY_pos =  ArmC[1] - NegGlitchZero
     else:
         s.AY_pos = ArmC[1]
-    #print(f'Arm_Y:{s.AY_pos}, Arm_X:{s.AX_pos}')
+    print(f'Arm_Y:{s.AY_pos}, Arm_X:{s.AX_pos}')
 
 class SubbedIntrFuncClass:
     def __init__(s, RoConn, sett):
@@ -155,7 +155,6 @@ PArmY, PArmX, PClaw = 0,0,0
 
 #Arm Movements
 def ArmCarry(RoConn):
-    print("armShouldmove")
     #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
     RoConn.me.robotic_arm.moveto(0,80).wait_for_completed(timeout=3)
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
@@ -170,11 +169,11 @@ def CloseHand(RoConn, Power=100):
     
 def ArmPickUp(RoConn):
     RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
-    RoConn.me.robotic_arm.moveto(180,-60).wait_for_completed(timeout=3) #Y,X 
+    RoConn.me.robotic_arm.moveto(180,-80).wait_for_completed(timeout=3) #Y,X 
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
 
 try:
-    robot.robotic_arm.moveto(x=50, y=20).wait_for_completed(timeout=4)
+    robot.robotic_arm.moveto(0,80).wait_for_completed(timeout=4)
 except Exception as e:
     print("Arm Cordinates too much", e)
 #RoConn.ConFree.set()
@@ -355,7 +354,7 @@ while runnin.is_set():
             
     #(After events fired!) load things to show in window
     try:
-        print("getting image")
+        #print("getting image")
         #cf = RoConn.cam.Re(timeout=1 , strategy='newest') #camera stream
         cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #image taken
         #self.ConFree.set()
@@ -366,7 +365,7 @@ while runnin.is_set():
         if FirstCamFrame:
             FirstCamFrame = False
         screen.s.blit(CamImg, (0,0))
-        print("done w image")
+        #print("done w image")
     except Exception as e:
         print(f'FrameQueue Error:{e}, Trace: {traceback.format_exc()}')
         if not FirstCamFrame and FrameTry >= sett.FrameMissingReconn:
@@ -384,7 +383,7 @@ while runnin.is_set():
     #    ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
     pygame.display.update()
     clock.tick(sett.FPSCap)  # limits FPS to 30
-    print("ticked")
+    #print("ticked")
 #if sett.CamWin:
 #    FrameQueue.task_done()
 print("Main Stopping")
