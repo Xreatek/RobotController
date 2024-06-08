@@ -17,7 +17,7 @@ import Enums as E
 class Connection:
     def __init__(self, runinEvnt ,ConnType, sett) -> None:
         self.runnin = runinEvnt
-        self.ConFree = td.Event() #(connection not locked)problems may arise if more async threads comunicate with the sdk so that both resume at the same time then make async comunication func
+        #self.ConFree = td.Event() #(connection not locked)problems may arise if more async threads comunicate with the sdk so that both resume at the same time then make async comunication func
         self.me = self._EstablishConn(ConnType)
         self.APType = ConnType
         
@@ -33,7 +33,7 @@ class Connection:
             try:
                 if ConnType == E.ConnType.ExternalRouter:
                     #if needed can set custom ips
-                    IntrRobot.config.LOCAL_IP_STR = "192.168.2.8"#"10.249.48.12"
+                    #IntrRobot.config.LOCAL_IP_STR = "192.168.2.28"#"10.249.48.12"
                     #IntrRobot.config.ROBOT_IP_STR = "192.168.2.12"#"10.249.48.13"
                     #IntrRobot.config.DEFAULT_PROTO_TYPE = IntrRobot.protocol.DUSS_MB_TYPE_REQ
 
@@ -63,7 +63,7 @@ class Connection:
                 print(f"Error establishing connection:{e} | trace: {traceback.format_exc()}")
                 break
         print("Robot Version:{0}".format(RoConn.get_version()))
-        s.ConFree.set()
+        #s.ConFree.set()
         return RoConn
             
 def RobotCloseOldAP(rs):
@@ -72,7 +72,6 @@ def RobotCloseOldAP(rs):
             ApType = rs.APType
             #rs.me.reset()
             #IntrCam.conn.queue.Empty()
-            #rs.cam.stop()
             rs.me.close()
             print("cleared connection")
             #IntrCam.conn.queue.Empty()
