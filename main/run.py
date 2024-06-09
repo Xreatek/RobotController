@@ -5,6 +5,7 @@ import pygame
 import cv2 as cv
 from random import randint
 import time
+import json
 
 import robomaster.action
 import robomaster.robot
@@ -18,6 +19,21 @@ from robomaster import robot as SeeRoFunction
 import RobotConn as RobotConnMod
 from robomaster import exceptions
 
+#loading AI
+from ultralytics import YOLO
+import math 
+
+model = YOLO("./model/best.pt")
+
+classNames = ["paper"]
+
+
+#Ai Values
+CurrentAiMode = AiMode.Searching
+RunAiFrame = True
+
+#Loaded AI
+
 #start logging
 #robomaster.enable_logging_to_file()
 
@@ -25,15 +41,15 @@ from robomaster import exceptions
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
-        self.Opperator = OpTypes.Human
-        self.NormalSpeed = 100 #rpm (keep in mind angle and speed are calculated the same)
-        self.FastSpeed = 400
+        self.Opperator = OpTypes.AI
+        self.NormalSpeed = 40 #rpm (keep in mind angle and speed are calculated the same)
+        self.FastSpeed = 180
         self.TurnAngle = 80 #turning rpm
         self.SlowAngle =  25
         self.ArmSpeed = 1
         
         #safety settings
-        self.SafeMode = False
+        self.SafeMode = True
         self.MaxRPM = 225 #be carefull please..
         
         #unstable options
@@ -41,7 +57,7 @@ class ConfigClass:
         self.FPSRecon = 15
         self.ReconTimeout = 8
         self.FPSCap = 10
-        self.CamWin = True
+        self.CamWin = True #when ai you wouldnt poke out their eyes right..?
         self.ResizeMainFBFeed = True
 
 sett = ConfigClass()
@@ -95,7 +111,7 @@ def GetArmPos(ArmC, s):
         s.AY_pos =  ArmC[1] - NegGlitchZero
     else:
         s.AY_pos = ArmC[1]
-    print(f'Arm_Y:{s.AY_pos}, Arm_X:{s.AX_pos}')
+    #print(f'Arm_Y:{s.AY_pos}, Arm_X:{s.AX_pos}')
 
 class SubbedIntrFuncClass:
     def __init__(s, RoConn, sett):
@@ -156,7 +172,7 @@ PArmY, PArmX, PClaw = 0,0,0
 #Arm Movements
 def ArmCarry(RoConn):
     #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
-    RoConn.me.robotic_arm.moveto(0,80).wait_for_completed(timeout=3)
+    RoConn.me.robotic_arm.moveto(120,-50).wait_for_completed(timeout=3)
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
     
 def OpenHand(RoConn, Power=100):
@@ -169,15 +185,91 @@ def CloseHand(RoConn, Power=100):
     
 def ArmPickUp(RoConn):
     RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
-    RoConn.me.robotic_arm.moveto(180,-80).wait_for_completed(timeout=3) #Y,X 
+    RoConn.me.robotic_arm.moveto(180,-90).wait_for_completed(timeout=3) #Y,X 
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
 
 try:
-    robot.robotic_arm.moveto(0,80).wait_for_completed(timeout=4)
+    RoConn.me.robotic_arm.moveto(120,-50).wait_for_completed(timeout=4)
+    #robot.robotic_arm.moveto(120,-50).wait_for_completed(timeout=4) possible search mode
 except Exception as e:
     print("Arm Cordinates too much", e)
 #RoConn.ConFree.set()
 while runnin.is_set():
+    print("WhileLoop")
+    if sett.CamWin:
+        try:
+            #print("getting image")
+            #cf = RoConn.cam.Re(timeout=1 , strategy='newest') #camera stream
+            cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #image taken
+            #self.ConFree.set()
+            ecf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
+            if sett.ResizeMainFBFeed:
+                ecf = cv.resize(ecf, (screen.MaxXDim, screen.MaxYDim))
+            CamImg = pygame.image.frombuffer(ecf, (screen.MaxXDim, screen.MaxYDim),"RGB")
+            if FirstCamFrame:
+                FirstCamFrame = False
+            screen.s.blit(CamImg, (0,0))
+            #print("done w image")
+        except Exception as e:
+            print(f'FrameQueue Error:{e}, Trace: {traceback.format_exc()}')
+            if not FirstCamFrame and FrameTry >= sett.FrameMissingReconn:
+                FrameTry = 0
+                RoConn, robot, SubVals = RoReConn(RoConn, ReconnState, sett)
+                ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
+            else:
+                FrameTry += 1
+                if sett.Opperator == OpTypes.AI:
+                    RunAiFrame = False #Run Ai This Frame? disable
+        FrameTry = 0
+        
+    #Ai movement things yeah
+    
+    if sett.Opperator == OpTypes.AI and RunAiFrame:
+        try:
+            print("Ai Vision")
+
+            if CurrentAiMode == AiMode.Searching:
+                print("searching")
+                #here ai detect
+                results = model(cf)
+                # coordinates
+                for r in results:
+                    boxes = r.boxes
+
+                    for box in boxes:
+                        # bounding box
+                        print(box)
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+
+                        # put box in cam
+                        cv.rectangle(cf, (x1, y1), (x2, y2), (255, 0, 0), 3)
+
+                        # confidence
+                        #confidence = math.ceil((box.conf[0]*100))/100
+                        #print("Confidence --->",confidence)
+
+                        # class name
+                        #cls = int(box.cls[0])
+                        #print("Class name -->", classNames[cls])
+
+                        # object details
+                        org = [x1, y1]
+                        font = cv.FONT_HERSHEY_SIMPLEX
+                        fontScale = 1
+                        color = (255, 0, 0)
+                        thickness = 2
+
+                        #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
+
+                cv.imshow('Webcam', cf)
+                cv.waitKey(1)
+        except Exception as e:
+            print(f'Ai had exception: {e}')
+            continue    
+    
+    #End of Ai movement things... yeah    
+
     #RoArm.moveto( x=0 , y=0 )
     #WKey, AKey, SKey, DKey = False, False, False, False
     mk = 0 #(pressed movement keys)
@@ -353,28 +445,6 @@ while runnin.is_set():
         #    robot.chassis.drive_speed(px,py,pz, timeout=0)
             
     #(After events fired!) load things to show in window
-    try:
-        #print("getting image")
-        #cf = RoConn.cam.Re(timeout=1 , strategy='newest') #camera stream
-        cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #image taken
-        #self.ConFree.set()
-        cf = cv.cvtColor(cf, cv.COLOR_BGR2RGB)
-        if sett.ResizeMainFBFeed:
-            cf = cv.resize(cf, (screen.MaxXDim, screen.MaxYDim))
-        CamImg = pygame.image.frombuffer(cf, (screen.MaxXDim, screen.MaxYDim),"RGB")
-        if FirstCamFrame:
-            FirstCamFrame = False
-        screen.s.blit(CamImg, (0,0))
-        #print("done w image")
-    except Exception as e:
-        print(f'FrameQueue Error:{e}, Trace: {traceback.format_exc()}')
-        if not FirstCamFrame and FrameTry >= sett.FrameMissingReconn:
-            FrameTry = 0
-            RoConn, robot, SubVals = RoReConn(RoConn, ReconnState, sett)
-            ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
-        else:
-            FrameTry += 1
-    FrameTry = 0
     
     #print(clock.get_fps())
     if (clock.get_fps() <= sett.FPSRecon) and (time.time() > ReConnTimeout):
@@ -383,6 +453,7 @@ while runnin.is_set():
     #    ReConnTimeout = (time.time()+sett.ReconTimeout) #resetting timeout for fps drop detection
     pygame.display.update()
     clock.tick(sett.FPSCap)  # limits FPS to 30
+    RunAiFrame = True
     #print("ticked")
 #if sett.CamWin:
 #    FrameQueue.task_done()
@@ -391,7 +462,7 @@ print("Main Stopping")
 RoConn.cam.stop_video_stream()
 
 runnin.clear()
-robot.led.set_led(comp=led.COMP_ALL, r=100, g=100, b=0, effect=led.EFFECT_ON)
+robot.led.set_led(comp=led.COMP_ALL, r=5, g=5, b=0, effect=led.EFFECT_ON)
 robot.close()
 
 pygame.display.quit()

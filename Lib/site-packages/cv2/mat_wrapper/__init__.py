@@ -1,18 +1,12 @@
 __all__ = []
 
+import sys
 import numpy as np
 import cv2 as cv
-from typing import TYPE_CHECKING, Any
-
-# Same as cv2.typing.NumPyArrayGeneric, but avoids circular dependencies
-if TYPE_CHECKING:
-    _NumPyArrayGeneric = np.ndarray[Any, np.dtype[np.generic]]
-else:
-    _NumPyArrayGeneric = np.ndarray
 
 # NumPy documentation: https://numpy.org/doc/stable/user/basics.subclassing.html
 
-class Mat(_NumPyArrayGeneric):
+class Mat(np.ndarray):
     '''
     cv.Mat wrapper for numpy array.
 

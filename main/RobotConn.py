@@ -23,7 +23,7 @@ class Connection:
         
         if sett.CamWin:
             self.cam = self.me.camera
-            self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_360P)
+            self.cam.start_video_stream(display=False, resolution=IntrCam.STREAM_720P)
         
     def _EstablishConn(s, ConnType):
         #IntrRobot.client.CLIENT_MAX_EVENT_NUM=2
@@ -33,7 +33,7 @@ class Connection:
             try:
                 if ConnType == E.ConnType.ExternalRouter:
                     #if needed can set custom ips
-                    #IntrRobot.config.LOCAL_IP_STR = "192.168.2.28"#"10.249.48.12"
+                    IntrRobot.config.LOCAL_IP_STR = "192.168.2.28"#"10.249.48.12"
                     #IntrRobot.config.ROBOT_IP_STR = "192.168.2.12"#"10.249.48.13"
                     #IntrRobot.config.DEFAULT_PROTO_TYPE = IntrRobot.protocol.DUSS_MB_TYPE_REQ
 

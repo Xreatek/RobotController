@@ -15,3 +15,12 @@ class ArmCommands(Enum):
 class OpTypes(Enum):
     AI = 0
     Human = 1
+
+class AiMode(Enum):
+    Searching = 0
+    Found = 1 
+    EnRoute = 2 
+    PickingUp = 3
+    HoldCheck = 4
+    ReturnCarry = 5
+    DropCheck = 6
