@@ -20,17 +20,6 @@ import RobotConn as RobotConnMod
 from robomaster import exceptions
 
 #loading AI
-from ultralytics import YOLO
-import math 
-
-model = YOLO("./model/best.pt")
-
-classNames = ["paper"]
-
-
-#Ai Values
-CurrentAiMode = AiMode.Searching
-RunAiFrame = True
 
 #Loaded AI
 
@@ -41,9 +30,9 @@ RunAiFrame = True
 class ConfigClass:
     def __init__(self):
         self.ConnectionType = ConnType.ExternalRouter
-        self.Opperator = OpTypes.AI
+        self.Opperator = OpTypes.Human
         self.NormalSpeed = 40 #rpm (keep in mind angle and speed are calculated the same)
-        self.FastSpeed = 180
+        self.FastSpeed = 160
         self.TurnAngle = 80 #turning rpm
         self.SlowAngle =  25
         self.ArmSpeed = 1
@@ -172,24 +161,25 @@ PArmY, PArmX, PClaw = 0,0,0
 #Arm Movements
 def ArmCarry(RoConn):
     #SeeRoFunction.robotic_arm.RoboticArm.moveto(0,0).wait_for_completed(timeout=10)
-    RoConn.me.robotic_arm.moveto(120,-50).wait_for_completed(timeout=3)
+    RoConn.me.robotic_arm.moveto(120,40).wait_for_completed(timeout=3)
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
     
 def OpenHand(RoConn, Power=100):
     #SeeRoFunction.gripper.Gripper.open(0)
     RoConn.me.gripper.open(Power)
     
-def CloseHand(RoConn, Power=100):
+def CloseHand(RoConn, Power=500):
     #SeeRoFunction.gripper.Gripper.close()
     RoConn.me.gripper.close(Power)
     
 def ArmPickUp(RoConn):
     RoConn.me.robotic_arm.moveto(180,0).wait_for_completed(timeout=3) #Y,X
+    cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
     RoConn.me.robotic_arm.moveto(180,-90).wait_for_completed(timeout=3) #Y,X 
     cf = RoConn.cam.read_cv2_image(strategy="newest", timeout=4) #removes fragmentation
 
 try:
-    RoConn.me.robotic_arm.moveto(120,-50).wait_for_completed(timeout=4)
+    RoConn.me.robotic_arm.moveto(120,40).wait_for_completed(timeout=3)
     #robot.robotic_arm.moveto(120,-50).wait_for_completed(timeout=4) possible search mode
 except Exception as e:
     print("Arm Cordinates too much", e)
@@ -231,7 +221,7 @@ while runnin.is_set():
             if CurrentAiMode == AiMode.Searching:
                 print("searching")
                 #here ai detect
-                results = model(cf)
+                results = model(cf, stream=True)
                 # coordinates
                 for r in results:
                     boxes = r.boxes

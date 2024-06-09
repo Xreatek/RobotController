@@ -1,10 +1,13 @@
 from ultralytics import YOLO
+import torch
 import cv2
 import math 
 # start webcam
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)
 cap.set(4, 480)
+torch.device("cuda")
+print(f'CUDA SUPPORT: {torch.cuda.is_available()}')
 
 # model
 model = YOLO("./model/best.pt")
