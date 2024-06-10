@@ -214,49 +214,49 @@ while runnin.is_set():
         
     #Ai movement things yeah
     
-    if sett.Opperator == OpTypes.AI and RunAiFrame:
-        try:
-            print("Ai Vision")
-
-            if CurrentAiMode == AiMode.Searching:
-                print("searching")
-                #here ai detect
-                results = model(cf, stream=True)
-                # coordinates
-                for r in results:
-                    boxes = r.boxes
-
-                    for box in boxes:
-                        # bounding box
-                        print(box)
-                        x1, y1, x2, y2 = box.xyxy[0]
-                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
-
-                        # put box in cam
-                        cv.rectangle(cf, (x1, y1), (x2, y2), (255, 0, 0), 3)
-
-                        # confidence
-                        #confidence = math.ceil((box.conf[0]*100))/100
-                        #print("Confidence --->",confidence)
-
-                        # class name
-                        #cls = int(box.cls[0])
-                        #print("Class name -->", classNames[cls])
-
-                        # object details
-                        org = [x1, y1]
-                        font = cv.FONT_HERSHEY_SIMPLEX
-                        fontScale = 1
-                        color = (255, 0, 0)
-                        thickness = 2
-
-                        #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
-
-                cv.imshow('Webcam', cf)
-                cv.waitKey(1)
-        except Exception as e:
-            print(f'Ai had exception: {e}')
-            continue    
+#    if sett.Opperator == OpTypes.AI and RunAiFrame:
+#        try:
+#            print("Ai Vision")
+#
+#            #if CurrentAiMode == AiMode.Searching:
+#                print("searching")
+#                #here ai detect
+#                results = model(cf, stream=True)
+#                # coordinates
+#                for r in results:
+#                    boxes = r.boxes
+#
+#                    for box in boxes:
+#                        # bounding box
+#                        print(box)
+#                        x1, y1, x2, y2 = box.xyxy[0]
+#                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+#
+#                        # put box in cam
+#                        cv.rectangle(cf, (x1, y1), (x2, y2), (255, 0, 0), 3)
+#
+#                        # confidence
+#                        #confidence = math.ceil((box.conf[0]*100))/100
+#                        #print("Confidence --->",confidence)
+#
+#                        # class name
+#                        #cls = int(box.cls[0])
+#                        #print("Class name -->", classNames[cls])
+#
+#                        # object details
+#                        org = [x1, y1]
+#                        font = cv.FONT_HERSHEY_SIMPLEX
+#                        fontScale = 1
+#                        color = (255, 0, 0)
+#                        thickness = 2
+#
+#                        #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
+#
+#                cv.imshow('Webcam', cf)
+#                cv.waitKey(1)
+#        except Exception as e:
+#            print(f'Ai had exception: {e}')
+#            continue    
     
     #End of Ai movement things... yeah    
 

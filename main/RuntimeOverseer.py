@@ -1,19 +1,91 @@
-import threading
+import robomaster.camera as CamResolution
 
+import threading
+import queue
+import collections
+
+from Enums import *
+import Controller
+import Observer
+
+class Settings:
+    def __init__(self) -> None:
+        self.ConnectionType = ConnType.ExternalRouter
+        self.RobotIp = None #None or ip string
+        self.HostIp = "192.168.2.28" #None or ip string
+        
+        self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
+        self.AngleSpeed = 25
+        self.Visualize = True
+        
+        self.StreamRes = CamResolution.STREAM_720P
+        self.DisplayRawStream = False
+        
+        #unstable options
+        self.FrameMissingReconn = 5 #amount of times queue can be empty before reconnection
+        self.FPSRecon = 15
+        self.ReconTimeout = 8
+        self.FPSCap = 10
+        self.CamWin = True #when ai you wouldnt poke out their eyes right..?
+        self.ResizeMainFBFeed = True
+
+class GlobalVariables:
+    def __init__(self) -> None:
+        self.runState = threading.Event()
+        self.runState.set()
+        self.ConnState = threading.Event()
+        
+        #Command Vars 
+        self.RoCmd = collections.deque(maxlen=1) #max queue size of 1 so no backingup
+        self.RoCmdArgs = collections.deque(maxlen=1) #use lists for multiple
+        self.RoDone = threading.Event() #able to recieve new commands and not busy with prev
+        self.RoDone.set() #default true
+        
+        #Stream Vars
+        self.ImgStream = collections.deque(maxlen=1)
+
+class ThreadMasterClass:
+    def __init__(self) -> None:
+        self.Settings = Settings()
+        self.GlobalVars = GlobalVariables()
+        
+        print('Starting robot controller')
+        self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+        self.RobotController.start() #make monitor that restarts interface when it crashes
+        try:
+            self.GlobalVars.ConnState.wait(timeout=30)
+        except Exception as e:
+            print(f'Problem waiting for connection to be made. | {e}')
+            exit(503) #connection problems error code
+        print('Controller running')
+        
+        #self.GlobalVars.RoCmdArgs.append(90); self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
+        
+        #starting observer
+        self.Observer = threading.Thread(target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
+        self.Observer.start()
+        
+        
+
+if __name__ == "__main__":
+    ThreadMasterClass()
+        
+
+#starting connection
 
 #-runtime observer
-#starts components
+#√ starts components
 #sets robot controlls in a loop to see if it stopped and if true then
 #   it will reinstate the robot controlls(observer should not be effected since it will just have to wait a bit longer on its image but no variables should be lost.)
 #(if needed same could be done for observer)
 
 #-robot controlls
-#make connection then return
-#main robot controller sets up subscribers video stream etc
-#robot controller in loop waiting for commands and updating current image when ai isnt busy
+#√ make connection then return
+#√ main robot controller sets up subscribers video stream etc
+#√ robot controller in loop waiting for commands and updating current image when ai isnt busy
 
 #-ai observer
-#waits untill connection is made
+#√ waits untill connection is made
 #if in search mode (optional: wandering)
 #   waits for new camera frame
 #   then if something is found it calculates the rotation angle and sends that as a command to the robot as angle to turn (mean while no updates to camera(maybe))
@@ -46,6 +118,3 @@ import threading
 #       when aligned robot will drop held paper
 #       then robot rotates 180 degrees
 #       !Then robot is set back to search mode
-
-
-    

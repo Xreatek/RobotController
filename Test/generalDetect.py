@@ -10,7 +10,7 @@ torch.device("cuda")
 print(f'CUDA SUPPORT: {torch.cuda.is_available()}')
 
 # model
-model = YOLO("./model/best.pt")
+model = YOLO("./model/CurProp.pt")
 
 # object classes
 classNames = ["paper"]
