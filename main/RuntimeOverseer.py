@@ -21,13 +21,6 @@ class Settings:
         self.StreamRes = CamResolution.STREAM_720P
         self.DisplayRawStream = False
         
-        #unstable options
-        self.FrameMissingReconn = 5 #amount of times queue can be empty before reconnection
-        self.FPSRecon = 15
-        self.ReconTimeout = 8
-        self.FPSCap = 10
-        self.CamWin = True #when ai you wouldnt poke out their eyes right..?
-        self.ResizeMainFBFeed = True
 
 class GlobalVariables:
     def __init__(self) -> None:
