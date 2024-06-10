@@ -44,7 +44,7 @@ class AiObserver:
             try:
                 #print("Ai Vision")
                 InputImg = self.ImgStream.pop()
-                results = self.model(InputImg, stream=True)
+                results = self.model(InputImg, stream=False)
                 
                 #if self.mode == AiMode.Searching:
                 #    print("search")
@@ -86,15 +86,15 @@ class AiObserver:
 
                             #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
 
-                    cv.imshow('Webcam', InputImg)
+                    cv.imshow('robot ai visualized', InputImg)
                     cv.waitKey(1)
             except KeyboardInterrupt:
                 print("Manual Shutdown detected")
                 self.RunState.clear()
                 exit(-1)
             except IndexError:
-                print("index error")
-                time.sleep(0.01) #to reduce some lag getting images
+                #print("index error")
+                time.sleep(0.2) #to reduce some lag getting images
             except Exception as e:
                 print(f'Ai observer ran into an error {e}, traceback: {traceback.format_exc()}')
                 

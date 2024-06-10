@@ -105,7 +105,7 @@ class RobotInterface:
             
             #command structs
             if self.command == ControllCMDs.Waiting:
-                time.sleep(0.05)#otherwise camera would 💩 itself because it would have only a few nano seconds to get a image
+                time.sleep(0.3)#otherwise camera would 💩 itself because it would have only a few nano seconds to get a image
             
             elif self.command == ControllCMDs.Rotate:
                 RotateDegrees = self.args.pop() #rotate degrees

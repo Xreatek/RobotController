@@ -19,7 +19,7 @@ class Settings:
         self.AngleSpeed = 25
         self.Visualize = True
         
-        self.StreamRes = CamResolution.STREAM_720P
+        self.StreamRes = CamResolution.STREAM_540P
         self.DisplayRawStream = False
         
 
@@ -65,6 +65,7 @@ class ThreadMasterClass:
     def Reviver(self):
         while self.GlobalVars.runState.is_set():
             InterfaceAlive = self.RobotController.isAlive()
+            #print(f'Interface state: {InterfaceAlive}')
             if not InterfaceAlive:
                 print("Restarting Controller Thread")
                 self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
@@ -73,8 +74,14 @@ class ThreadMasterClass:
         
 
 if __name__ == "__main__":
+    import sys
+    sys.setrecursionlimit(100000000000) #dont ask...
+    print(sys.getrecursionlimit()) #I promise it's not my fault...
     ThreadMasterClass()
         
+
+#name threads so img stream can see if controller is still running if not it will end so runtime can start a new one
+#or stream can be replaced to the main controller
 
 #starting connection
 
