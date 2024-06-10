@@ -1,6 +1,7 @@
 from robomaster import robot as IRO
 
 import robomaster.camera as RoCam
+import robomaster.led as ROLED
 
 import threading
 import queue
@@ -40,7 +41,9 @@ class RobotInterface:
         self.Connection = self._MakeConnection()
         self.Stream = threading.Thread(target=ImgStream.Stream, args=[self.Connection, MainSettings, GlobVars])
         self.Stream.start()
-        self.Subbed = SubFuncClass(self.Connection) #unnecessary for now..
+        
+        self.Connection.led.set_led(comp=ROLED.COMP_ALL, r=0, g=0, b=0, effect=ROLED.EFFECT_OFF)
+        #self.Subbed = SubFuncClass(self.Connection) #unnecessary for now..
         print("Robot Controller Connected")
         self.GlobVars.ConnState.set()
         

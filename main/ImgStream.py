@@ -27,7 +27,6 @@ class Stream:
     def MediaStream(self):
         while self.runState.is_set():
             Frame = self.RobotCam.read_video_frame(timeout=5, strategy="newest") #lmao video dies yeah
-            #Frame = self.RobotCam.take_photo()
             self.ImgStream.append(Frame)
             
             

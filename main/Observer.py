@@ -42,20 +42,20 @@ class AiObserver:
     def AiMain(self):
         while self.RunState.is_set():
             try:
-                print("Ai Vision")
-
-                if self.mode == AiMode.Searching:
-                    print("search")
-                    image = self.ImgStream.pop()
+                #print("Ai Vision")
+                InputImg = self.ImgStream.pop()
+                results = self.model(InputImg, stream=True)
+                
+                #if self.mode == AiMode.Searching:
+                #    print("search")
+                    
                     
                     #cv.imshow("test", image)
                     #cv.waitKey(1)
 
 
                 if self.Visualize:
-                    print("Visualize")
-                    #here ai detect
-                    results = self.model(self.frame, stream=True)
+                    #print("Visualize")
                     # coordinates
                     for r in results:
                         boxes = r.boxes
@@ -67,15 +67,15 @@ class AiObserver:
                             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
 
                             # put box in cam
-                            cv.rectangle(self.frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
+                            cv.rectangle(InputImg, (x1, y1), (x2, y2), (255, 0, 0), 0)
 
-                            # confidence
-                            #confidence = math.ceil((box.conf[0]*100))/100
+                            #confidence
+                            confidence = math.ceil((box.conf[0]*100))/100
                             #print("Confidence --->",confidence)
 
-                            # class name
-                            #cls = int(box.cls[0])
-                            #print("Class name -->", classNames[cls])
+                            #class name
+                            cls = int(box.cls[0])
+                            #print("Class name -->", self.classNames[cls])
 
                             # object details
                             org = [x1, y1]
@@ -86,9 +86,14 @@ class AiObserver:
 
                             #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
 
-                    cv.imshow('Webcam', self.frame)
+                    cv.imshow('Webcam', InputImg)
                     cv.waitKey(1)
+            except KeyboardInterrupt:
+                print("Manual Shutdown detected")
+                self.RunState.clear()
+                exit(-1)
             except IndexError:
+                print("index error")
                 time.sleep(0.01) #to reduce some lag getting images
             except Exception as e:
                 print(f'Ai observer ran into an error {e}, traceback: {traceback.format_exc()}')

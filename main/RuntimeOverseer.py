@@ -3,6 +3,7 @@ import robomaster.camera as CamResolution
 import threading
 import queue
 import collections
+import time
 
 from Enums import *
 import Controller
@@ -58,6 +59,17 @@ class ThreadMasterClass:
         self.Observer = threading.Thread(target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
         self.Observer.start()
         
+        #makes sure sdk keeps running
+        self.Reviver()
+    
+    def Reviver(self):
+        while self.GlobalVars.runState.is_set():
+            InterfaceAlive = self.RobotController.isAlive()
+            if not InterfaceAlive:
+                print("Restarting Controller Thread")
+                self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+                self.RobotController.start() #make monitor that restarts interface when it crashes
+            time.sleep(0.1)
         
 
 if __name__ == "__main__":
