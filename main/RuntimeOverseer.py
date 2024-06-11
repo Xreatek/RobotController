@@ -19,8 +19,8 @@ class Settings:
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
         
-        self.Visualize = False
-        self.DisplayRawStream = True
+        self.Visualize = True
+        self.DisplayRawStream = False
         
         self.ReviverEnabled = False #disable for testing
 
@@ -37,7 +37,7 @@ class GlobalVariables:
         self.RoDone.set() #default true
         
         #Stream Vars
-        self.ImgStream = collections.deque(maxlen=1)
+        self.ImgStream = collections.deque(maxlen=2)
 
 class ThreadMasterClass:
     def __init__(self) -> None:
@@ -54,8 +54,8 @@ class ThreadMasterClass:
             exit(503) #connection problems error code
         print('Controller running')
         
-        self.GlobalVars.RoCmdArgs.append(90)
-        self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
+        #self.GlobalVars.RoCmdArgs.append(90)
+        #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
         
         #starting observer
         self.Observer = threading.Thread(name='Observer', target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])

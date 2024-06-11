@@ -47,16 +47,22 @@ class RobotInterface:
         self.Connection = self._MakeConnection()
         
         self.DisplayRawStream = self.MainSettings.DisplayRawStream
-        self._RawStream = collections.deque(maxlen=2)
-        self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.MainSettings, self.GlobVars])
-        self._Stream.start()
+        if self.DisplayRawStream:
+            self._RawStream = collections.deque(maxlen=1)
+            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.MainSettings, self.GlobVars])
+            self._Stream.start()
+            self._ImgStream = self.GlobVars.ImgStream
+            self._CamRelay = threading.Thread(name='Frame_Relay', target=self._StreamRelay, args=[])
+            self._CamRelay.start()
+        else:
+            self._RawStream = self.GlobVars.ImgStream
+            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.MainSettings, self.GlobVars])
+            self._Stream.start()
         
-        self._CamRelay = threading.Thread(name='Frame_Relay', target=self._StreamRelay, args=[])
-        self._CamRelay.start()
-            
         #self.Subbed = SubFuncClass(self.Connection) #unnecessary for now..
         print("Robot Controller Connected")
         self.GlobVars.ConnState.set()
+        self.DoneCmd.set()
         
         #Starts ai robot interface
         self.InterfaceLoop()
@@ -81,11 +87,11 @@ class RobotInterface:
     def _StreamRelay(self):
         while self.runState.is_set():
             try:
-                F = self._RawStream.popleft()
+                Frame = self._RawStream.pop()
                 #F = cv2.flip(F, 1)
-                if self.MainSettings.DisplayRawStream:
-                    cv.imshow('IP Camera stream',F)
-                    cv.waitKey(1)
+                cv.imshow('IP Camera stream',Frame)
+                cv.waitKey(1)
+                self._ImgStream.append(Frame)
             except IndexError: time.sleep(0.01);
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')

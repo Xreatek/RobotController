@@ -4,9 +4,6 @@ import socket
 import libmedia_codec
 import numpy
 
-import time
-import cv2
-
 class Stream:
     def __init__(self, RawStream, MainSettings, GlobVars) -> None:
         self.MainSettings = MainSettings
@@ -26,21 +23,18 @@ class Stream:
         CamStream.connect(CamAddr)
 
         decoder = libmedia_codec.H264Decoder()
-        RecvBuf = b''
         while self.runState.is_set():
             try:
-                buf = CamStream.recv(2**16) #gets buf
-                RecvBuf += buf #adds on buffer
-                Frames = decoder.decode(RecvBuf)#decodes buffer
+                buf = CamStream.recv(2048) #gets buf
+                Frames = decoder.decode(buf)#decodes buffer
                 availFrames = len(Frames)
                 if availFrames > 0:
-                    Frame_Data = Frames[availFrames-1]
+                    Frame_Data = Frames[0]
                     (frame, width, height, ls) = Frame_Data
                     if frame:
                         frame = numpy.fromstring(frame, dtype=numpy.ubyte, count=len(frame), sep='')
                         frame = (frame.reshape((height, width, 3))) 
                         self.RawStream.append(frame)
-                        RecvBuf = b''
 
             except queue.Full:
                 print(f"ImageCamera queue got filled up that isnt supposed to happen.. Exiting...")# Trace:{traceback.format_exc()}") #unnecessary

@@ -16,6 +16,7 @@ class AiObserver:
         
         #object detector
         self.model = YOLO("./model/CurProp.pt")
+        self.model.info(detailed=False, verbose=False)
         self.classNames = ["paper"]
         
         #variables
@@ -44,14 +45,10 @@ class AiObserver:
             try:
                 #print("Ai Vision")
                 InputImg = self.ImgStream.pop()
-                results = self.model(InputImg, stream=False)
+                results = self.model(InputImg, stream=True)
                 
                 #if self.mode == AiMode.Searching:
                 #    print("search")
-                    
-                    
-                    #cv.imshow("test", image)
-                    #cv.waitKey(1)
 
 
                 if self.Visualize:
