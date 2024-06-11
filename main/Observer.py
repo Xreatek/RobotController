@@ -97,4 +97,7 @@ class AiObserver:
                 time.sleep(0.2) #to reduce some lag getting images
             except Exception as e:
                 print(f'Ai observer ran into an error {e}, traceback: {traceback.format_exc()}')
-                
+
+if __name__ == '__main__':
+    import RuntimeOverseer
+    RuntimeOverseer.ThreadMasterClass()

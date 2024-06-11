@@ -18,7 +18,7 @@ classNames = ["paper"]
 
 while True:
     success, img = cap.read()
-    results = model(img, stream=True)
+    results = model(img, stream=False)
 
     # coordinates
     for r in results:

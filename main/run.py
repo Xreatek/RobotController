@@ -29,7 +29,7 @@ from robomaster import exceptions
 #SETTINGS
 class ConfigClass:
     def __init__(self):
-        self.ConnectionType = ConnType.ExternalRouter
+        self.ConnectionType = ConnType.InternalRoutor
         self.Opperator = OpTypes.Human
         self.NormalSpeed = 40 #rpm (keep in mind angle and speed are calculated the same)
         self.FastSpeed = 160

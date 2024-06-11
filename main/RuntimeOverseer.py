@@ -1,6 +1,5 @@
-import robomaster.camera as CamResolution
-
 import threading
+import traceback
 import queue
 import collections
 import time
@@ -12,16 +11,18 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = None #None or ip string
-        self.HostIp = "192.168.2.28" #None or ip string
+        self.RobotIp = '192.168.2.7' #None or ip string
+        #self.HostIp = '192.168.2.28' #None or ip string
+        
+        self.RobotPort = '40923'
         
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
-        self.Visualize = True
         
-        self.StreamRes = CamResolution.STREAM_540P
-        self.DisplayRawStream = False
+        self.Visualize = False
+        self.DisplayRawStream = True
         
+        self.ReviverEnabled = False #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
@@ -44,7 +45,7 @@ class ThreadMasterClass:
         self.GlobalVars = GlobalVariables()
         
         print('Starting robot controller')
-        self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+        self.RobotController = threading.Thread(name='RobotController', target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
         self.RobotController.start() #make monitor that restarts interface when it crashes
         try:
             self.GlobalVars.ConnState.wait(timeout=30)
@@ -53,30 +54,33 @@ class ThreadMasterClass:
             exit(503) #connection problems error code
         print('Controller running')
         
-        #self.GlobalVars.RoCmdArgs.append(90); self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
+        self.GlobalVars.RoCmdArgs.append(90)
+        self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
         
         #starting observer
-        self.Observer = threading.Thread(target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
+        self.Observer = threading.Thread(name='Observer', target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
         self.Observer.start()
         
         #makes sure sdk keeps running
-        self.Reviver()
+        if self.Settings.ReviverEnabled:
+            self.Reviver()
     
     def Reviver(self):
-        while self.GlobalVars.runState.is_set():
-            InterfaceAlive = self.RobotController.isAlive()
-            #print(f'Interface state: {InterfaceAlive}')
-            if not InterfaceAlive:
-                print("Restarting Controller Thread")
-                self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
-                self.RobotController.start() #make monitor that restarts interface when it crashes
-            time.sleep(0.1)
-        
+        try:
+            while self.GlobalVars.runState.is_set():
+                InterfaceAlive = self.RobotController.isAlive()
+                #print(f'Interface state: {InterfaceAlive}')
+                if not InterfaceAlive:
+                    print("Restarting Controller Thread")
+                    self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+                    self.RobotController.start() #make monitor that restarts interface when it crashes
+                time.sleep(0.1)
+        except Exception as e:
+            print(f'Error occured in reviver. {e}, Trace: {traceback.format_exc()}')
+            
+            
 
 if __name__ == "__main__":
-    import sys
-    sys.setrecursionlimit(1000000000) #dont ask...
-    print(sys.getrecursionlimit()) #I promise it's not my fault...
     ThreadMasterClass()
         
 
