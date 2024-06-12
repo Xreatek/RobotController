@@ -1,4 +1,5 @@
 from ultralytics import YOLO
+import ultralytics.utils.
 import cv2 as cv
 from Enums import *
 import math 
@@ -16,16 +17,30 @@ class AiObserver:
         
         #object detector
         self.model = YOLO("./model/CurProp.pt")
-        self.model.info(detailed=False, verbose=False)
+        self.model.info(detailed=False, verbose=True)
         self.classNames = ["paper"]
         
         #variables
-        self.RunState = self.GlobeVars.runState
+        self.runState = self.GlobeVars.runState
         self.ImgStream = self.GlobeVars.ImgStream
         self.mode = AiMode.Searching
         
         #Robot Interface Commands
         self.InterfaceDone = self.GlobeVars.RoDone
+        
+        #wait for first frame
+        while self.runState.is_set():
+            try:
+                FirstFrame = self.ImgStream.popleft()
+                height, self.imgWidth, _ = FirstFrame.shape
+                break
+            except IndexError: 
+                time.sleep(0.01)
+                continue
+            except Exception as e:
+                print(f'Ran into error while getting first frame Error:{e}, Trace:{traceback.format_exc()}')
+                self.runState.clear()
+        print("Got first frame.")    
         
         #start main observerloop
         self.AiMain()
@@ -39,18 +54,24 @@ class AiObserver:
             self.GlobeVars.RoCmd = command
         else:
             print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
-    
+            
+    def TurnToWad(self, detectPos): #returns angle required to turn
+        RelativePos = detectPos / self.imgWidth
+        return (RelativePos - 0.5) * 120 #the fov of the cam is 120 
+        
     def AiMain(self):
-        while self.RunState.is_set():
+        while self.runState.is_set():
             try:
                 #print("Ai Vision")
-                InputImg = self.ImgStream.pop()
-                results = self.model(InputImg, stream=True)
+                InputImg = self.ImgStream.popleft()
+                InputImg.resize(640) #RESIZING IMG MAYBE HELPS
+                YOLO.cuda()
+                results = self.model(InputImg, stream=False)
                 
-                #if self.mode == AiMode.Searching:
-                #    print("search")
-
-
+                if self.mode == AiMode.Searching:
+                    #TurnAngle = self.TurnToWad()
+                    print("search")
+                
                 if self.Visualize:
                     #print("Visualize")
                     # coordinates
@@ -59,7 +80,7 @@ class AiObserver:
 
                         for box in boxes:
                             # bounding box
-                            print(box)
+                            #print(box)
                             x1, y1, x2, y2 = box.xyxy[0]
                             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
 
@@ -85,16 +106,13 @@ class AiObserver:
 
                     cv.imshow('robot ai visualized', InputImg)
                     cv.waitKey(1)
-            except KeyboardInterrupt:
-                print("Manual Shutdown detected")
-                self.RunState.clear()
-                exit(-1)
+                
             except IndexError:
-                #print("index error")
-                time.sleep(0.2) #to reduce some lag getting images
+                time.sleep(0.01)
+                continue
             except Exception as e:
-                print(f'Ai observer ran into an error {e}, traceback: {traceback.format_exc()}')
-
+                print(f'Error in Ai runtime {e},  Trace:{traceback.format_exc()}')
+                
 if __name__ == '__main__':
     import RuntimeOverseer
     RuntimeOverseer.ThreadMasterClass()

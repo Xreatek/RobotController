@@ -87,7 +87,7 @@ class RobotInterface:
     def _StreamRelay(self):
         while self.runState.is_set():
             try:
-                Frame = self._RawStream.pop()
+                Frame = self._RawStream.popleft()
                 #F = cv2.flip(F, 1)
                 cv.imshow('IP Camera stream',Frame)
                 cv.waitKey(1)
@@ -95,9 +95,10 @@ class RobotInterface:
             except IndexError: time.sleep(0.01);
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')
+        cv.destroyAllWindows()
     
     def InterfaceLoop(self): 
-        while self.GlobVars.runState.is_set(): 
+        while self.GlobVars.ConnState.is_set(): 
             if self.DoneCmd.is_set():
                 try:
                     self.command = self.GlobVars.RoCmd.pop()
@@ -115,20 +116,17 @@ class RobotInterface:
                 CmdArgs = self.args.pop()
                 cmd = self.command(CmdArgs)
                 print(cmd)
-                self.Connection.send(cmd.encode('utf-8')) #wait untill complete
+                self.Connection.send(cmd.encode('utf-8')) #wait untill complete <- to do!
                 try:
                     buf = self.Connection.recv(1024)
                     print(buf.decode('utf-8'))
-                except:
-                    print("couldnt wait")
+                except e:
+                    print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 print("Command finished!")
                 self.DoneCmd.set()
-                
-            #elif self.command == ControllCMDs.Rotate:
-            #    RotateDegrees = self.args.pop() #rotate degrees
-            #    self.Connection.chassis.move(x=0,y=0, z=RotateDegrees ,xy_speed=0.0, z_speed=30).wait_for_completed()
-            #    print('Rotation done!')
-            #    self.DoneCmd.set()
+        self.Connection.send(str('stream off;').encode('utf-8')) #maybe wait for ok
+        self.Connection.close()    
+    
                 
 if __name__ == '__main__':
     import RuntimeOverseer

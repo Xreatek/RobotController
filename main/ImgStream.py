@@ -10,6 +10,7 @@ class Stream:
         self.GlobVars = GlobVars
         
         self.runState = self.GlobVars.runState
+        self.ConnState = self.GlobVars.ConnState
         
         self.ImgStream = self.GlobVars.ImgStream
         self.RawStream = RawStream
@@ -21,9 +22,10 @@ class Stream:
         CamAddr = (self.MainSettings.RobotIp, int (40921))
         CamStream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         CamStream.connect(CamAddr)
+        CamStream.settimeout(1)
 
         decoder = libmedia_codec.H264Decoder()
-        while self.runState.is_set():
+        while self.ConnState.is_set():
             try:
                 buf = CamStream.recv(2048) #gets buf
                 Frames = decoder.decode(buf)#decodes buffer
@@ -36,12 +38,13 @@ class Stream:
                         frame = (frame.reshape((height, width, 3))) 
                         self.RawStream.append(frame)
 
-            except queue.Full:
-                print(f"ImageCamera queue got filled up that isnt supposed to happen.. Exiting...")# Trace:{traceback.format_exc()}") #unnecessary
-                self.runState.clear()
             except socket.error as e:
-                print(f'Socket Error :{e} Traceback: {traceback.print_exc()}')
+                print(f'Socket Error :{e} Traceback: {traceback.format_exc()}')
+                self.GlobVars.ConnState.clear()
+            except Exception as e:
+                print(f'Stream Exectption {e}, Trace:{traceback.format_exc()}')
                 self.runState.clear()
+        CamStream.close()
                 
 if __name__ == '__main__':
     import RuntimeOverseer
