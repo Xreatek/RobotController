@@ -5,6 +5,7 @@ import math
 import random
 
 import time
+import datetime
 import traceback
 
 class AiObserver:
@@ -16,10 +17,11 @@ class AiObserver:
         self.Visualize = self.MainSettings.Visualize
         
         #object detector
-        self.model = YOLO("./model/M2V9.pt") #best for now: M2V9 imgsz:640
-        self.model.cuda(0)
-        self.model.info()
-        self.classNames = ["paper"]
+        if not self.Visualize:
+            self.model = YOLO("./model/M2V9.pt") #best for now: M2V9 imgsz:640
+            self.model.cuda(0)
+            self.model.info()
+            self.classNames = ["paper"]
         
         #variables
         self.runState = self.GlobeVars.runState
@@ -71,8 +73,10 @@ class AiObserver:
                 #Dataset collection
                 if self.MainSettings.DataCollector: #merge recovery branch with main
                     if random.randint(0,1):
-                        cv.imwrite(f'./DataSet/{1}.jpg', InputImg)
-                
+                        print("captured frame")
+                        cv.imwrite(f'./DataSet/{time.time()}_{datetime.datetime.now().day}_{datetime.datetime.now().month}.jpg', InputImg)
+                        time.sleep(0.5)
+                    continue
                 results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
                 
                 if self.mode == AiMode.Searching and results[0]:

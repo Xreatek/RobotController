@@ -91,9 +91,12 @@ class RobotInterface:
             try:
                 Frame = self._RawStream.popleft()
                 #F = cv2.flip(F, 1)
-                cv.imshow('IP Camera stream',Frame)
-                cv.waitKey(1)
                 self._ImgStream.append(Frame)
+                cv.imshow('IP Camera stream',Frame)
+                if cv.waitKey(1) == ord('q'):
+                    self.runState.clear()
+                    self.GlobalVars.ConnState.clear() #cam does not look at runstate
+                    
             except IndexError: time.sleep(0.01);
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')

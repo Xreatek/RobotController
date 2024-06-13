@@ -19,9 +19,9 @@ class Settings:
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
         
-        self.Visualize = True
-        self.DisplayRawStream = False
-        self.DataCollector = True
+        self.Visualize = False
+        self.DisplayRawStream = True
+        self.DataCollector = True #if true AI not activated
         
         self.ReviverEnabled = True #disable for testing
 
@@ -69,7 +69,7 @@ class ThreadMasterClass:
     def Reviver(self):
         try:
             while self.GlobalVars.runState.isSet():#self.GlobalVars.runState.is_set():
-                InterfaceAlive = self.RobotController.isAlive()
+                InterfaceAlive = self.RobotController.is_alive()
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
                     print("Stopped interface")
