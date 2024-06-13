@@ -11,7 +11,7 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = '10.249.48.13' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = '192.168.2.7'#'10.249.48.13' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
@@ -21,6 +21,7 @@ class Settings:
         
         self.Visualize = True
         self.DisplayRawStream = False
+        self.DataCollector = False
         
         self.ReviverEnabled = True #disable for testing
 
@@ -72,14 +73,14 @@ class ThreadMasterClass:
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
                     print("Stopped interface")
-                    time.sleep(5)
+                    #time.sleep(5)
                     print("Restarting Controller Thread")
                     self.GlobalVars.runState.set()
                     self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
                     self.RobotController.start() #make monitor that restarts interface when it crashes
                     self.GlobalVars.ConnState.wait(timeout=10)
-                    self.GlobalVars.RoCmdArgs.append(90)
-                    self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
+                    #self.GlobalVars.RoCmdArgs.append(90)
+                    #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
                     
                 time.sleep(0.1)
         except Exception as e:

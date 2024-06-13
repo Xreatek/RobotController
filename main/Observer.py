@@ -1,8 +1,8 @@
 from ultralytics import YOLO
-import ultralytics.utils.
 import cv2 as cv
 from Enums import *
-import math 
+import math
+import random
 
 import time
 import traceback
@@ -16,8 +16,9 @@ class AiObserver:
         self.Visualize = self.MainSettings.Visualize
         
         #object detector
-        self.model = YOLO("./model/CurProp.pt")
-        self.model.info(detailed=False, verbose=True)
+        self.model = YOLO("./model/MerBestV0.5.pt") #best for now: 0.5
+        #self.model.load('../model/M1V9.pt')
+        self.model.info()
         self.classNames = ["paper"]
         
         #variables
@@ -63,50 +64,22 @@ class AiObserver:
         while self.runState.is_set():
             try:
                 #print("Ai Vision")
-                InputImg = self.ImgStream.popleft()
-                InputImg.resize(640) #RESIZING IMG MAYBE HELPS
-                YOLO.cuda()
-                results = self.model(InputImg, stream=False)
+                InputImg = self.ImgStream.popleft()        
+                InputImg = InputImg[120:600, 320:960] #cv.resize(InputImg, (640, 640)) #resizing to img size that it has been trained on helps big time
+                
+                #Dataset collection
+                if self.MainSettings.DataCollector:
+                    if random.randint(0,1):
+                        cv.imwrite(f'DataSet/img.jpg', InputImg)
+                
+                results = self.model(InputImg, stream=False, conf=0.05, iou=0.5 ,show=self.Visualize, device="cuda:0",verbose=False)
                 
                 if self.mode == AiMode.Searching:
                     #TurnAngle = self.TurnToWad()
-                    print("search")
-                
-                if self.Visualize:
-                    #print("Visualize")
-                    # coordinates
-                    for r in results:
-                        boxes = r.boxes
-
-                        for box in boxes:
-                            # bounding box
-                            #print(box)
-                            x1, y1, x2, y2 = box.xyxy[0]
-                            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
-
-                            # put box in cam
-                            cv.rectangle(InputImg, (x1, y1), (x2, y2), (255, 0, 0), 0)
-
-                            #confidence
-                            confidence = math.ceil((box.conf[0]*100))/100
-                            #print("Confidence --->",confidence)
-
-                            #class name
-                            cls = int(box.cls[0])
-                            #print("Class name -->", self.classNames[cls])
-
-                            # object details
-                            org = [x1, y1]
-                            font = cv.FONT_HERSHEY_SIMPLEX
-                            fontScale = 1
-                            color = (255, 0, 0)
-                            thickness = 2
-
-                            #cv.putText(cf, classNames[cls], org, font, fontScale, color, thickness)
-
-                    cv.imshow('robot ai visualized', InputImg)
-                    cv.waitKey(1)
-                
+                    continue
+                    #print("search")
+                    
+                    
             except IndexError:
                 time.sleep(0.01)
                 continue

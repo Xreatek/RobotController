@@ -22,7 +22,7 @@ class Stream:
         CamAddr = (self.MainSettings.RobotIp, int (40921))
         CamStream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         CamStream.connect(CamAddr)
-        CamStream.settimeout(1)
+        CamStream.settimeout(10)
 
         decoder = libmedia_codec.H264Decoder()
         while self.ConnState.is_set():
@@ -35,7 +35,7 @@ class Stream:
                     (frame, width, height, ls) = Frame_Data
                     if frame:
                         frame = numpy.fromstring(frame, dtype=numpy.ubyte, count=len(frame), sep='')
-                        frame = (frame.reshape((height, width, 3))) 
+                        frame = (frame.reshape((height, width, 3)))
                         self.RawStream.append(frame)
 
             except socket.error as e:
