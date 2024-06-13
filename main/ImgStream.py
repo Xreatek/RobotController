@@ -5,12 +5,14 @@ import libmedia_codec
 import numpy
 
 class Stream:
-    def __init__(self, RawStream, MainSettings, GlobVars) -> None:
+    def __init__(self, RawStream, stoppedStream, MainSettings, GlobVars) -> None:
         self.MainSettings = MainSettings
         self.GlobVars = GlobVars
         
         self.runState = self.GlobVars.runState
         self.ConnState = self.GlobVars.ConnState
+        
+        self.streamStopped = stoppedStream
         
         self.ImgStream = self.GlobVars.ImgStream
         self.RawStream = RawStream
@@ -24,6 +26,8 @@ class Stream:
         CamStream.connect(CamAddr)
         CamStream.settimeout(10)
 
+        self.streamStopped.clear() #starting stream
+        
         decoder = libmedia_codec.H264Decoder()
         while self.ConnState.is_set():
             try:
@@ -45,6 +49,7 @@ class Stream:
                 print(f'Stream Exectption {e}, Trace:{traceback.format_exc()}')
                 self.runState.clear()
         CamStream.close()
+        self.streamStopped.set()
                 
 if __name__ == '__main__':
     import RuntimeOverseer

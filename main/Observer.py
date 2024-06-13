@@ -16,7 +16,8 @@ class AiObserver:
         self.Visualize = self.MainSettings.Visualize
         
         #object detector
-        self.model = YOLO("./model/M1V9.pt") #best for now: M1V9
+        self.model = YOLO("./model/M2V9.pt") #best for now: M2V9 imgsz:640
+        self.model.cuda(0)
         self.model.info()
         self.classNames = ["paper"]
         
@@ -29,7 +30,7 @@ class AiObserver:
         self.InterfaceDone = self.GlobeVars.RoDone
         
         #wait for first frame
-        while self.runState.is_set():
+        while self.runState.isSet():
             try:
                 FirstFrame = self.ImgStream.popleft()
                 height, self.imgWidth, _ = FirstFrame.shape
@@ -48,7 +49,7 @@ class AiObserver:
         #self.imgsz = 640 #do not change requires a new model
     
     def Interface(self, command, args=None):
-        if self.InterfaceDone.is_set():
+        if self.InterfaceDone.isSet():
             if args != None:
                 self.GlobeVars.RoCmdArgs = args
             self.GlobeVars.RoCmd = command
@@ -60,27 +61,30 @@ class AiObserver:
         return (RelativePos - 0.5) * 120 #the fov of the cam is 120 
         
     def AiMain(self):
-        while self.runState.is_set():
+        while self.runState.isSet():
             try:
                 #print("Ai Vision")
                 InputImg = self.ImgStream.popleft()        
-                InputImg = InputImg[120:600, 320:960] #cv.resize(InputImg, (640, 640)) #resizing to img size that it has been trained on helps big time
-                
+                #InputImg = InputImg[120:600, 320:960] #sizing to a dataset of 640 so W:640 H:480
+                                #  Y(120-600) X(320-960)
+                                #for wad angle 120/2=60 320/2=160
                 #Dataset collection
-                if self.MainSettings.DataCollector:
+                if self.MainSettings.DataCollector: #merge recovery branch with main
                     if random.randint(0,1):
-                        cv.imwrite(f'DataSet/img.jpg', InputImg)
+                        cv.imwrite(f'./DataSet/{1}.jpg', InputImg)
                 
-                results = self.model(InputImg, stream=False, conf=0.05, iou=0.5 ,show=self.Visualize, device=['cuda:0'],verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
                 
-                if self.mode == AiMode.Searching:
+                if self.mode == AiMode.Searching and results[0]:
+                    boxes = results[0].boxes
+                    print(boxes)
                     #TurnAngle = self.TurnToWad()
                     continue
                     #print("search")
                     
                     
             except IndexError:
-                time.sleep(0.01)
+                time.sleep(0.05)
                 continue
             except Exception as e:
                 print(f'Error in Ai runtime {e},  Trace:{traceback.format_exc()}')

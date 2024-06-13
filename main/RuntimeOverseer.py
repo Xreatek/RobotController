@@ -11,7 +11,7 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = '192.168.2.7'#'10.249.48.13' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = '10.249.48.13' #'192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
@@ -21,7 +21,7 @@ class Settings:
         
         self.Visualize = True
         self.DisplayRawStream = False
-        self.DataCollector = False
+        self.DataCollector = True
         
         self.ReviverEnabled = True #disable for testing
 
@@ -68,7 +68,7 @@ class ThreadMasterClass:
     
     def Reviver(self):
         try:
-            while True:#self.GlobalVars.runState.is_set():
+            while self.GlobalVars.runState.isSet():#self.GlobalVars.runState.is_set():
                 InterfaceAlive = self.RobotController.isAlive()
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
@@ -83,6 +83,9 @@ class ThreadMasterClass:
                     #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
                     
                 time.sleep(0.1)
+        except KeyboardInterrupt:
+            self.GlobalVars.runState.clear()
+            self.GlobalVars.ConnState.clear()
         except Exception as e:
             print(f'Error occured in reviver. {e}, Trace: {traceback.format_exc()}')
             

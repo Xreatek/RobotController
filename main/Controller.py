@@ -46,19 +46,21 @@ class RobotInterface:
         self.DoneCmd = self.GlobVars.RoDone
         self.Connection = self._MakeConnection()
         
+        self.stoppedStream = threading.Event()#to make sure controller doesnt end before the camera port has been closed
+        self.stoppedStream.set()
         self.DisplayRawStream = self.MainSettings.DisplayRawStream
         if self.DisplayRawStream:
             self._RawStream = collections.deque(maxlen=1)
-            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.MainSettings, self.GlobVars])
+            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.stoppedStream, self.MainSettings, self.GlobVars])
             self._Stream.start()
             self._ImgStream = self.GlobVars.ImgStream
             self._CamRelay = threading.Thread(name='Frame_Relay', target=self._StreamRelay, args=[])
             self._CamRelay.start()
         else:
             self._RawStream = self.GlobVars.ImgStream
-            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.MainSettings, self.GlobVars])
+            self._Stream = threading.Thread(name='Camera_Stream', target=ImgStream.Stream, args=[self._RawStream, self.stoppedStream, self.MainSettings, self.GlobVars])
             self._Stream.start()
-        
+            
         #self.Subbed = SubFuncClass(self.Connection) #unnecessary for now..
         print("Robot Controller Connected")
         self.GlobVars.ConnState.set()
@@ -124,7 +126,10 @@ class RobotInterface:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 print("Command finished!")
                 self.DoneCmd.set()
-        self.Connection.send(str('stream off;').encode('utf-8')) #maybe wait for ok
+        self.Connection.send(str('stream off;').encode('utf-8'))
+        self.stoppedStream.wait(timeout=6)
+        self.Connection.send(str('quit;').encode('utf-8'))
+        time.sleep(0.5) #make sure close doesnt arive ealier
         self.Connection.close()    
     
                 
