@@ -11,7 +11,8 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = '10.249.48.13' #'192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        #self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = '192.168.2.7' #home 
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
@@ -19,9 +20,9 @@ class Settings:
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
         
-        self.Visualize = False
-        self.DisplayRawStream = True
-        self.DataCollector = True #if true AI not activated
+        self.Visualize = True
+        self.DisplayRawStream = False
+        self.DataCollector = False #if true AI not activated
         
         self.ReviverEnabled = True #disable for testing
 
@@ -32,8 +33,8 @@ class GlobalVariables:
         self.ConnState = threading.Event()
         
         #Command Vars 
-        self.RoCmd = collections.deque(maxlen=1) #max queue size of 1 so no backingup
-        self.RoCmdArgs = collections.deque(maxlen=1) #use lists for multiple
+        self.RoCmd = queue.Queue(maxsize=1) #collections.deque(maxlen=1) #max queue size of 1 so no backingup
+        self.RoCmdArgs = queue.Queue(maxsize=1)#collections.deque(maxlen=1) #use lists for multiple
         self.RoDone = threading.Event() #able to recieve new commands and not busy with prev
         self.RoDone.set() #default true
         
@@ -81,15 +82,14 @@ class ThreadMasterClass:
                     self.GlobalVars.ConnState.wait(timeout=10)
                     #self.GlobalVars.RoCmdArgs.append(90)
                     #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
-                    
+            
                 time.sleep(0.1)
         except KeyboardInterrupt:
             self.GlobalVars.runState.clear()
             self.GlobalVars.ConnState.clear()
         except Exception as e:
             print(f'Error occured in reviver. {e}, Trace: {traceback.format_exc()}')
-            
-            
+
 
 if __name__ == "__main__":
     ThreadMasterClass()

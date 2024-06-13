@@ -15,9 +15,10 @@ class AiObserver:
         
         #settings
         self.Visualize = self.MainSettings.Visualize
+        self.DataCollector = MainSettings.DataCollector
         
         #object detector
-        if not self.Visualize:
+        if not self.DataCollector:
             self.model = YOLO("./model/M2V9.pt") #best for now: M2V9 imgsz:640
             self.model.cuda(0)
             self.model.info()
@@ -35,7 +36,7 @@ class AiObserver:
         while self.runState.isSet():
             try:
                 FirstFrame = self.ImgStream.popleft()
-                height, self.imgWidth, _ = FirstFrame.shape
+                self.imgHeight, self.imgWidth, _ = FirstFrame.shape
                 break
             except IndexError: 
                 time.sleep(0.01)
@@ -51,10 +52,15 @@ class AiObserver:
         #self.imgsz = 640 #do not change requires a new model
     
     def Interface(self, command, args=None):
+        self.InterfaceDone.wait(timeout=10)
         if self.InterfaceDone.isSet():
             if args != None:
-                self.GlobeVars.RoCmdArgs = args
-            self.GlobeVars.RoCmd = command
+                self.GlobeVars.RoCmdArgs.put(args)
+            self.GlobeVars.RoCmd.put(command)
+            time.sleep(0.1)
+            self.InterfaceDone.wait(timeout=20)
+            print("InterfaceCompleted")
+            time.sleep(0.1)#to get new cam buffer
         else:
             print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
             
@@ -66,10 +72,10 @@ class AiObserver:
         while self.runState.isSet():
             try:
                 #print("Ai Vision")
-                InputImg = self.ImgStream.popleft()        
-                #InputImg = InputImg[120:600, 320:960] #sizing to a dataset of 640 so W:640 H:480
-                                #  Y(120-600) X(320-960)
-                                #for wad angle 120/2=60 320/2=160
+                InputImg = self.ImgStream.popleft()
+                #InputImg = InputImg[120:600, 320:960] #sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
+                #                   Y(120-600) X(320-960)
+                #for wad angle 120/2=60 320/2=160
                 #Dataset collection
                 if self.MainSettings.DataCollector: #merge recovery branch with main
                     if random.randint(0,1):
@@ -81,8 +87,19 @@ class AiObserver:
                 
                 if self.mode == AiMode.Searching and results[0]:
                     boxes = results[0].boxes
-                    print(boxes)
-                    #TurnAngle = self.TurnToWad()
+                    XNormWidthStrt = float(boxes.xyxyn[0,0].cpu())
+                    XNormWidthEnd = float(boxes.xyxyn[0,2].cpu())
+                    WDet = XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2)
+                    DetWPos = int(self.imgWidth*WDet)
+                    #BoxStartHeight = (self.imgWidth*NORMALIZEDY)
+                    image = cv.circle(InputImg, (DetWPos,480), radius=5, color=(0, 0, 255), thickness=10)
+                    cv.imshow("win",image)
+                    cv.waitKey(1)
+                    
+                    TurnAngle = self.TurnToWad(DetWPos) #could half by never going to full screen and keeping half?
+                    print(TurnAngle)
+                    if abs(TurnAngle) > 1:
+                        self.Interface(ControllCMDs.Rotate, [TurnAngle])
                     continue
                     #print("search")
                     

@@ -19,7 +19,7 @@ class AiMode(Enum):#id
 
 class ControllCMDs(Enum):#amt of vars passed
     Waiting = None #(internal)
-    Rotate = lambda a:f'chassis move z {a} z_speed 50;' #RotateDegrees; 1 arg
+    Rotate = lambda a:f'chassis move z {a[0]} z_speed 50;' #RotateDegrees; 1 arg
     
     
     #ArmGrab = 0

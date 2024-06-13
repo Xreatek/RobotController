@@ -45,6 +45,8 @@ class RobotInterface:
         self.args = self.GlobVars.RoCmdArgs
         self.DoneCmd = self.GlobVars.RoDone
         self.Connection = self._MakeConnection()
+        print("Robot Controller Connected")
+        self.GlobVars.ConnState.set()
         
         self.stoppedStream = threading.Event()#to make sure controller doesnt end before the camera port has been closed
         self.stoppedStream.set()
@@ -62,8 +64,6 @@ class RobotInterface:
             self._Stream.start()
             
         #self.Subbed = SubFuncClass(self.Connection) #unnecessary for now..
-        print("Robot Controller Connected")
-        self.GlobVars.ConnState.set()
         self.DoneCmd.set()
         
         #Starts ai robot interface
@@ -87,7 +87,7 @@ class RobotInterface:
         return Connection
     
     def _StreamRelay(self):
-        while self.runState.is_set():
+        while self.GlobVars.ConnState.isSet() and self.runState.isSet():
             try:
                 Frame = self._RawStream.popleft()
                 #F = cv2.flip(F, 1)
@@ -95,7 +95,7 @@ class RobotInterface:
                 cv.imshow('IP Camera stream',Frame)
                 if cv.waitKey(1) == ord('q'):
                     self.runState.clear()
-                    self.GlobalVars.ConnState.clear() #cam does not look at runstate
+                    #self.GlobalVars.ConnState.clear() #cam does not look at runstate
                     
             except IndexError: time.sleep(0.01);
             except Exception as e:
@@ -103,10 +103,10 @@ class RobotInterface:
         cv.destroyAllWindows()
     
     def InterfaceLoop(self): 
-        while self.GlobVars.ConnState.is_set(): 
+        while self.GlobVars.ConnState.is_set() and self.runState.is_set(): 
             if self.DoneCmd.is_set():
                 try:
-                    self.command = self.GlobVars.RoCmd.pop()
+                    self.command = self.GlobVars.RoCmd.get()
                     self.DoneCmd.clear()
                 except IndexError:
                     #print("No new interface command.")
@@ -118,7 +118,7 @@ class RobotInterface:
             if self.command == ControllCMDs.Waiting:
                 time.sleep(0.3)# to not stress out controller
             else:
-                CmdArgs = self.args.pop()
+                CmdArgs = self.args.get()
                 cmd = self.command(CmdArgs)
                 print(cmd)
                 self.Connection.send(cmd.encode('utf-8')) #wait untill complete <- to do!
