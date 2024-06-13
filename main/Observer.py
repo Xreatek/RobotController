@@ -16,8 +16,7 @@ class AiObserver:
         self.Visualize = self.MainSettings.Visualize
         
         #object detector
-        self.model = YOLO("./model/MerBestV0.5.pt") #best for now: 0.5
-        #self.model.load('../model/M1V9.pt')
+        self.model = YOLO("./model/M1V9.pt") #best for now: M1V9
         self.model.info()
         self.classNames = ["paper"]
         
@@ -72,7 +71,7 @@ class AiObserver:
                     if random.randint(0,1):
                         cv.imwrite(f'DataSet/img.jpg', InputImg)
                 
-                results = self.model(InputImg, stream=False, conf=0.05, iou=0.5 ,show=self.Visualize, device="cuda:0",verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.05, iou=0.5 ,show=self.Visualize, device=['cuda:0'],verbose=False)
                 
                 if self.mode == AiMode.Searching:
                     #TurnAngle = self.TurnToWad()
