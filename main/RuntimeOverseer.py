@@ -33,12 +33,11 @@ class GlobalVariables:
         self.ConnState = threading.Event()
         
         #Command Vars 
-        self.RoCmd = queue.Queue(maxsize=1) #collections.deque(maxlen=1) #max queue size of 1 so no backingup
-        self.RoCmdArgs = queue.Queue(maxsize=1)#collections.deque(maxlen=1) #use lists for multiple
+        self.RoCmd = collections.deque(maxlen=1) #max queue size of 1 so no backingup
+        self.RoCmdArgs = collections.deque(maxlen=1) #use lists for multiple
         self.RoDone = threading.Event() #able to recieve new commands and not busy with prev
         self.RoDone.set() #default true
         self.WaitForRoStatic = threading.Event()
-        
         
         #Stream Vars
         self.ImgStream = collections.deque(maxlen=3)
@@ -70,7 +69,7 @@ class ThreadMasterClass:
     
     def Reviver(self):
         try:
-            while self.GlobalVars.runState.isSet():#self.GlobalVars.runState.is_set():
+            while self.GlobalVars.runState.is_set():#self.GlobalVars.runState.is_set():
                 InterfaceAlive = self.RobotController.is_alive()
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
@@ -86,7 +85,7 @@ class ThreadMasterClass:
                         #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
                     else:
                         self.GlobalVars.runState.clear()
-                        print("Camera Crashed! oh no..")
+                        print("rip the camera crashed")
             
                 time.sleep(0.1)
         except KeyboardInterrupt:

@@ -30,6 +30,10 @@ class AiObserver:
         self.WaitForRoStatic = self.GlobeVars.WaitForRoStatic
         self.mode = AiMode.Searching
         
+        #default set
+        self.ArmState = ArmStates.middle
+        self.CloseBy = False
+        
         #Robot Interface Commands
         self.InterfaceDone = self.GlobeVars.RoDone
         
@@ -53,24 +57,47 @@ class AiObserver:
         #self.imgsz = 640 #do not change requires a new model
     
     def Interface(self, command, args=None, WaitForDone=False):
-        self.InterfaceDone.wait(timeout=10)
-        if self.InterfaceDone.isSet():
+        #self.InterfaceDone.wait(timeout=10)
+        if self.InterfaceDone.is_set():
             if args != None:
-                self.GlobeVars.RoCmdArgs.put(args)
+                self.GlobeVars.RoCmdArgs.append(args)
             if WaitForDone:
                 self.WaitForRoStatic.set()
-            self.GlobeVars.RoCmd.put(command)
-            time.sleep(0.1)#give controller time to start command
-            self.InterfaceDone.wait(timeout=20)
-            print("Interface_Completed")
-        else:
-            print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
+                self.GlobeVars.RoCmd.append(command)
+                time.sleep(0.3)#give controller time to start command
+                self.InterfaceDone.wait(timeout=20)
+            else:
+                self.GlobeVars.RoCmd.append(command)
+                time.sleep(0.3)#give controller time to start command
             
-    def TurnToWad(self, detectPos): #returns angle required to turn
-        RelativePos = detectPos / self.imgWidth
+            print("Interface_Completed")
+            return True
+        else:
+            #print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
+            return False
+    
+    def RelToScreenSize(self, RelativePos):
+        return int(self.imgWidth*RelativePos)
+    
+    def TurnToWad(self, RelativePos): #returns angle required to turn
         return (RelativePos - 0.5) * 120 #the fov of the cam is 120 
+
+    def GetHorizontalBox(self, results):
+        boxes = results[0].boxes
+        
+        XNormWidthStrt = round(float(boxes.xyxyn[0,0].cpu()), 3)
+        XNormWidthEnd = round(float(boxes.xyxyn[0,2].cpu()), 3)
+        return XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2) #gets middle of box relative its place on screen
+    
+    def GetVerticalBox(self, results): #from center
+        boxes = results[0].boxes
+        
+        YNormWidthStrt = round(float(boxes.xyxyn[0,1].cpu()), 3)
+        YNormWidthEnd = round(float(boxes.xyxyn[0,3].cpu()), 3)
+        return YNormWidthStrt+((YNormWidthEnd - YNormWidthStrt)/2)
         
     def AiMain(self):
+        self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
         while self.runState.isSet():
             try:
                 #print("Ai Vision")
@@ -85,35 +112,63 @@ class AiObserver:
                         cv.imwrite(f'./DataSet/{time.time()}_{datetime.datetime.now().day}_{datetime.datetime.now().month}.jpg', InputImg)
                         time.sleep(0.5)
                     continue
-                
-                if self.mode == AiMode.Searching and results[0]:
-                    results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
-                    
-                    boxes = results[0].boxes
-                    XNormWidthStrt = round(float(boxes.xyxyn[0,0].cpu()), 3)
-                    XNormWidthEnd = round(float(boxes.xyxyn[0,2].cpu()), 3)
-                    WDet = XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2)
-                    DetWPos = int(self.imgWidth*WDet)
-                    #BoxStartHeight = (self.imgWidth*NORMALIZEDY)
-                    image = cv.circle(InputImg, (DetWPos,480), radius=5, color=(0, 0, 255), thickness=10)
-                    cv.imshow("win",image)
-                    cv.waitKey(1)
-                    
-                    TurnAngle = self.TurnToWad(DetWPos) #could half by never going to full screen and keeping half?
-                    print(TurnAngle)
-                    if abs(TurnAngle) > 3:
-                        self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                results = self.model(InputImg, stream=False, conf=0.6, iou=0.5 ,show=self.Visualize, verbose=False)
+               
+                if self.mode == AiMode.Searching:
+                    if results[0]:
+                        XRelPos = self.GetHorizontalBox(results)
+
+                        #DetWPos = self.RelToScreenSize(RelPos)
+                        #image = cv.circle(InputImg, (DetWPos,480), radius=5, color=(0, 0, 255), thickness=10)
+                        #cv.imshow("win",image)
+                        #cv.waitKey(1)
+
+                        TurnAngle = self.TurnToWad(XRelPos)
+                        #print(TurnAngle)
+                        if abs(TurnAngle) > 3:
+                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                        else:
+                            print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
+                            self.mode = AiMode.EnRoute
                     else:
-                        self.mode = AiMode.EnRoute
+                        print("Turn")
+                        #self.Interface(ControllCMDs.Rotate, [45], WaitForDone=True)
                 
                 elif self.mode == AiMode.EnRoute:
-                    while 
-                    InputImg = InputImg[120:600, 640:960]
-                    results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
-                    if
-                    print("brrrt")
+                    if results[0]:
+                        XRelPos = self.GetHorizontalBox(results)
+                        YRelPos = self.GetVerticalBox(results)
+
+                        #print(f'Y_Pos: {YRelPos}') #tweak value once arm has been set
+                        if YRelPos > 0.6:  #horizontal location under 40%~
+                            state = False
+                            while state == False and self.runState.is_set():
+                                state = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                                time.sleep(0.01)
+                            self.mode = AiMode.ArmDown
+                            time.sleep(0.1)
+                            print("Into pickup mode")
+                            continue
+                        
+                        self.Interface(ControllCMDs.MoveWheels, [20], WaitForDone=False)
+                    else:
+                        self.Interface(ControllCMDs.MoveWheels, [-5], WaitForDone=False)
+                        print(f'lost backup maybe? {YRelPos}')
+                    time.sleep(0.1)
                     
+                elif self.mode == AiMode.ArmDown:
                     
+                    if results[0]:
+                        XRelPos = self.GetHorizontalBox(results)
+                        TurnAngle = self.TurnToWad(XRelPos)
+                        if TurnAngle > 1:
+                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                            continue
+                        print("check distance")
+                        #check distance sensor for mesurements
+                        #
+                        #check ai if in need of correction
+                        #get distance
                     
             except IndexError:
                 time.sleep(0.05)

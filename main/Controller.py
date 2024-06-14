@@ -99,11 +99,10 @@ class RobotInterface:
                 buf.decode('utf-8')
                 
                 st = sys.getsizeof(buf)
-                
                 #print(f'state buf: {buf}, cut:{buf[0]}')
-
                 if buf[0] == 49: #first value is 48 when false 49 when true
                     self.WaitForRoStatic.clear()
+                    
             except Exception as e:
                 print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 self.runState.clear()
@@ -113,7 +112,7 @@ class RobotInterface:
         while self.GlobVars.ConnState.is_set() and self.runState.is_set(): 
             if self.DoneCmd.is_set():
                 try:
-                    self.command = self.GlobVars.RoCmd.get()
+                    self.command = self.GlobVars.RoCmd.pop()
                     self.DoneCmd.clear()
                 except IndexError:
                     #print("No new interface command.")
@@ -125,20 +124,24 @@ class RobotInterface:
             if self.command == ControllCMDs.Waiting:
                 time.sleep(0.3)# to not stress out controller
             else:
-                CmdArgs = self.args.get()
+                try:
+                    CmdArgs = self.args.pop()
+                except IndexError:
+                    CmdArgs = None
                 cmd = self.command(CmdArgs)
                 #print(cmd)
                 self.Connection.send(cmd.encode('utf-8')) #wait untill complete <- to do!
-                time.sleep(0.5)
+                time.sleep(0.2)
                 try:
                     buf = self.Connection.recv(1024)
-                    BufContent = buf.decode('utf-8')
-                    print(f'Contoler Reply: {BufContent}')
+                    #BufContent = buf.decode('utf-8')
+                    #print(f'Contoler Reply: {BufContent}')
                 except Exception as e:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 if self.WaitForRoStatic.is_set():
+                    print('Running command until robot static')
                     self.WaitUntilStatic()
-                print("Command finished!")
+                #print("Command finished!")
                 self.DoneCmd.set()
         print("Controller stopping..")
         self.Connection.send(str('stream off;').encode('utf-8'))

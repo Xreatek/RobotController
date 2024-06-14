@@ -31,7 +31,7 @@ class Stream:
             decoder = libmedia_codec.H264Decoder()
             while self.ConnState.isSet() and self.runState.isSet():
                 try:
-                    buf = CamStream.recv(2048) #gets buf
+                    buf = CamStream.recv(1024) #gets buf
                     Frames = decoder.decode(buf)#decodes buffer
                     availFrames = len(Frames)
                     if availFrames > 0:
