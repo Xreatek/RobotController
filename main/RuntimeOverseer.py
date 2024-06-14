@@ -11,8 +11,8 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        #self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
-        self.RobotIp = '192.168.2.7' #home 
+        self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        #self.RobotIp = '192.168.2.7' #home 
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
@@ -24,7 +24,7 @@ class Settings:
         self.DisplayRawStream = False
         self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = True #disable for testing
+        self.ReviverEnabled = False #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
@@ -37,9 +37,11 @@ class GlobalVariables:
         self.RoCmdArgs = queue.Queue(maxsize=1)#collections.deque(maxlen=1) #use lists for multiple
         self.RoDone = threading.Event() #able to recieve new commands and not busy with prev
         self.RoDone.set() #default true
+        self.WaitForRoStatic = threading.Event()
+        
         
         #Stream Vars
-        self.ImgStream = collections.deque(maxlen=2)
+        self.ImgStream = collections.deque(maxlen=3)
 
 class ThreadMasterClass:
     def __init__(self) -> None:
@@ -63,9 +65,8 @@ class ThreadMasterClass:
         self.Observer = threading.Thread(name='Observer', target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
         self.Observer.start()
         
-        #makes sure sdk keeps running
-        if self.Settings.ReviverEnabled:
-            self.Reviver()
+        #makes sure sdk keeps running or stops it if false when error occurs
+        self.Reviver()
     
     def Reviver(self):
         try:
@@ -73,15 +74,19 @@ class ThreadMasterClass:
                 InterfaceAlive = self.RobotController.is_alive()
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
-                    print("Stopped interface")
-                    #time.sleep(5)
-                    print("Restarting Controller Thread")
-                    self.GlobalVars.runState.set()
-                    self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
-                    self.RobotController.start() #make monitor that restarts interface when it crashes
-                    self.GlobalVars.ConnState.wait(timeout=10)
-                    #self.GlobalVars.RoCmdArgs.append(90)
-                    #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
+                    if self.Settings.ReviverEnabled:
+                        print("Stopped interface")
+                        #time.sleep(5)
+                        print("Restarting Controller Thread")
+                        #self.GlobalVars.runState.set()
+                        self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+                        self.RobotController.start() #make monitor that restarts interface when it crashes
+                        self.GlobalVars.ConnState.wait(timeout=10)
+                        #self.GlobalVars.RoCmdArgs.append(90)
+                        #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
+                    else:
+                        self.GlobalVars.runState.clear()
+                        print("Camera Crashed! oh no..")
             
                 time.sleep(0.1)
         except KeyboardInterrupt:
@@ -89,6 +94,7 @@ class ThreadMasterClass:
             self.GlobalVars.ConnState.clear()
         except Exception as e:
             print(f'Error occured in reviver. {e}, Trace: {traceback.format_exc()}')
+        print(f'Reviver ended. Runstate: {self.GlobalVars.runState.is_set()}')
 
 
 if __name__ == "__main__":
@@ -113,10 +119,10 @@ if __name__ == "__main__":
 
 #-ai observer
 #√ waits untill connection is made
-#if in search mode (optional: wandering)
-#   waits for new camera frame
-#   then if something is found it calculates the rotation angle and sends that as a command to the robot as angle to turn (mean while no updates to camera(maybe))
-#   !once rotated as calculated mode is set to confirm mode 
+#√ if in search mode (optional: wandering)
+#√   waits for new camera frame
+#√   then if something is found it calculates the rotation angle and sends that as a command to the robot as angle to turn (mean while no updates to camera(maybe))
+#√   !once rotated as calculated mode is set to confirm mode 
 
 #elif in confirm mode 
 #   crop to only see directly infront of robot if something

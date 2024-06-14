@@ -27,27 +27,29 @@ class Stream:
         CamStream.settimeout(10)
 
         self.streamStopped.clear() #starting stream
-        
-        decoder = libmedia_codec.H264Decoder()
-        while self.ConnState.isSet() and self.runState.isSet():
-            try:
-                buf = CamStream.recv(2048) #gets buf
-                Frames = decoder.decode(buf)#decodes buffer
-                availFrames = len(Frames)
-                if availFrames > 0:
-                    Frame_Data = Frames[0]
-                    (frame, width, height, ls) = Frame_Data
-                    if frame:
-                        frame = numpy.fromstring(frame, dtype=numpy.ubyte, count=len(frame), sep='')
-                        frame = (frame.reshape((height, width, 3)))
-                        self.RawStream.append(frame)
+        try:
+            decoder = libmedia_codec.H264Decoder()
+            while self.ConnState.isSet() and self.runState.isSet():
+                try:
+                    buf = CamStream.recv(2048) #gets buf
+                    Frames = decoder.decode(buf)#decodes buffer
+                    availFrames = len(Frames)
+                    if availFrames > 0:
+                        Frame_Data = Frames[0]
+                        (frame, width, height, ls) = Frame_Data
+                        if frame:
+                            frame = numpy.fromstring(frame, dtype=numpy.ubyte, count=len(frame), sep='')
+                            frame = (frame.reshape((height, width, 3)))
+                            self.RawStream.append(frame)
 
-            except socket.error as e:
-                print(f'Socket Error :{e} Traceback: {traceback.format_exc()}')
-                self.GlobVars.ConnState.clear()
-            except Exception as e:
-                print(f'Stream Exectption {e}, Trace:{traceback.format_exc()}')
-                self.runState.clear()
+                except socket.error as e:
+                    print(f'Socket Error :{e} Traceback: {traceback.format_exc()}')
+                    self.GlobVars.ConnState.clear()
+                except Exception as e:
+                    print(f'Stream Exectption {e}, Trace:{traceback.format_exc()}')
+                    self.runState.clear()
+        except Exception as e:
+            print(f'Error in decoding stream: {e}, {traceback.format_exc()}')
         CamStream.close()
         self.streamStopped.set()
                 

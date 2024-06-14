@@ -27,6 +27,7 @@ class AiObserver:
         #variables
         self.runState = self.GlobeVars.runState
         self.ImgStream = self.GlobeVars.ImgStream
+        self.WaitForRoStatic = self.GlobeVars.WaitForRoStatic
         self.mode = AiMode.Searching
         
         #Robot Interface Commands
@@ -51,16 +52,17 @@ class AiObserver:
         
         #self.imgsz = 640 #do not change requires a new model
     
-    def Interface(self, command, args=None):
+    def Interface(self, command, args=None, WaitForDone=False):
         self.InterfaceDone.wait(timeout=10)
         if self.InterfaceDone.isSet():
             if args != None:
                 self.GlobeVars.RoCmdArgs.put(args)
+            if WaitForDone:
+                self.WaitForRoStatic.set()
             self.GlobeVars.RoCmd.put(command)
-            time.sleep(0.1)
+            time.sleep(0.1)#give controller time to start command
             self.InterfaceDone.wait(timeout=20)
-            print("InterfaceCompleted")
-            time.sleep(0.1)#to get new cam buffer
+            print("Interface_Completed")
         else:
             print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
             
@@ -83,12 +85,13 @@ class AiObserver:
                         cv.imwrite(f'./DataSet/{time.time()}_{datetime.datetime.now().day}_{datetime.datetime.now().month}.jpg', InputImg)
                         time.sleep(0.5)
                     continue
-                results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
                 
                 if self.mode == AiMode.Searching and results[0]:
+                    results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
+                    
                     boxes = results[0].boxes
-                    XNormWidthStrt = float(boxes.xyxyn[0,0].cpu())
-                    XNormWidthEnd = float(boxes.xyxyn[0,2].cpu())
+                    XNormWidthStrt = round(float(boxes.xyxyn[0,0].cpu()), 3)
+                    XNormWidthEnd = round(float(boxes.xyxyn[0,2].cpu()), 3)
                     WDet = XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2)
                     DetWPos = int(self.imgWidth*WDet)
                     #BoxStartHeight = (self.imgWidth*NORMALIZEDY)
@@ -98,10 +101,18 @@ class AiObserver:
                     
                     TurnAngle = self.TurnToWad(DetWPos) #could half by never going to full screen and keeping half?
                     print(TurnAngle)
-                    if abs(TurnAngle) > 1:
-                        self.Interface(ControllCMDs.Rotate, [TurnAngle])
-                    continue
-                    #print("search")
+                    if abs(TurnAngle) > 3:
+                        self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                    else:
+                        self.mode = AiMode.EnRoute
+                
+                elif self.mode == AiMode.EnRoute:
+                    while 
+                    InputImg = InputImg[120:600, 640:960]
+                    results = self.model(InputImg, stream=False, conf=0.5, iou=0.5 ,show=self.Visualize, verbose=False)
+                    if
+                    print("brrrt")
+                    
                     
                     
             except IndexError:

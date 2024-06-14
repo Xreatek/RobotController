@@ -18,19 +18,6 @@ from Enums import *
 #import SubFuncs
 import ImgStream
 
-#class SubFuncClass:
-#    def __init__(self, RobotConn):
-#        self.procent = int() #battery procentage
-#        self.CY_pos = float()
-#        self.CX_pos = float()
-#        self.AY_pos = float()
-#        self.AX_pos = float()
-#        
-#        #subscribe Subscriber functions 
-#        RobotConn.battery.sub_battery_info(1,SubFuncs.GetPerc, self)
-#        RobotConn.chassis.sub_position(0, 1, SubFuncs.GetPos, self)
-#        RobotConn.robotic_arm.sub_position(1, SubFuncs.GetArmPos, self)
-
 class RobotInterface:
     def __init__(self, MainSettings, GlobVars):
         self.MainSettings = MainSettings #saving Global settings in class
@@ -44,6 +31,7 @@ class RobotInterface:
         self.command = ControllCMDs.Waiting
         self.args = self.GlobVars.RoCmdArgs
         self.DoneCmd = self.GlobVars.RoDone
+        self.WaitForRoStatic = self.GlobVars.WaitForRoStatic
         self.Connection = self._MakeConnection()
         print("Robot Controller Connected")
         self.GlobVars.ConnState.set()
@@ -101,6 +89,25 @@ class RobotInterface:
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')
         cv.destroyAllWindows()
+        
+    def WaitUntilStatic(self):
+        while self.runState.is_set() and self.WaitForRoStatic.is_set():
+            self.Connection.send(str('chassis status ?;').encode('utf-8'))
+            time.sleep(0.1)#let the command be received
+            try:
+                buf = self.Connection.recv(1024)
+                buf.decode('utf-8')
+                
+                st = sys.getsizeof(buf)
+                
+                #print(f'state buf: {buf}, cut:{buf[0]}')
+
+                if buf[0] == 49: #first value is 48 when false 49 when true
+                    self.WaitForRoStatic.clear()
+            except Exception as e:
+                print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
+                self.runState.clear()
+            
     
     def InterfaceLoop(self): 
         while self.GlobVars.ConnState.is_set() and self.runState.is_set(): 
@@ -120,20 +127,26 @@ class RobotInterface:
             else:
                 CmdArgs = self.args.get()
                 cmd = self.command(CmdArgs)
-                print(cmd)
+                #print(cmd)
                 self.Connection.send(cmd.encode('utf-8')) #wait untill complete <- to do!
+                time.sleep(0.5)
                 try:
                     buf = self.Connection.recv(1024)
-                    print(buf.decode('utf-8'))
-                except e:
+                    BufContent = buf.decode('utf-8')
+                    print(f'Contoler Reply: {BufContent}')
+                except Exception as e:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
+                if self.WaitForRoStatic.is_set():
+                    self.WaitUntilStatic()
                 print("Command finished!")
                 self.DoneCmd.set()
+        print("Controller stopping..")
         self.Connection.send(str('stream off;').encode('utf-8'))
         self.stoppedStream.wait(timeout=6)
         self.Connection.send(str('quit;').encode('utf-8'))
         time.sleep(0.5) #make sure close doesnt arive ealier
-        self.Connection.close()    
+        self.Connection.close()
+        print('Controller stopped.')
     
                 
 if __name__ == '__main__':
