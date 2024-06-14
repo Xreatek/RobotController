@@ -17,6 +17,7 @@ class Settings:
         
         self.RobotPort = '40923'
         
+        self.AllowedLostFrames = 30 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
         

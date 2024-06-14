@@ -24,8 +24,9 @@ class ControllCMDs(Enum):
     Rotate = lambda a:f'chassis move z {a[0]} z_speed 50;' #RotateDegrees; 1 arg
     MoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 {a[0]} w3 {a[0]} w4 {a[0]};'
     StopWheels = lambda a:f'chassis wheel w1 0 w2 0 w3 0 w4 0;'
-    ArmDown = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]}'
-    
+    SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
+    EnableIR = lambda a:f'ir_distance_sensor measure {a[0]};'
+    GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
     #ArmGrab = 0
     #ArmTransport = 0
     #ClawClose = 0

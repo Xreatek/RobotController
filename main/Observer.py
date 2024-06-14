@@ -31,6 +31,7 @@ class AiObserver:
         self.mode = AiMode.Searching
         
         #default set
+        self.researchTimeout = 0
         self.ArmState = ArmStates.middle
         self.CloseBy = False
         
@@ -64,7 +65,7 @@ class AiObserver:
             if WaitForDone:
                 self.WaitForRoStatic.set()
                 self.GlobeVars.RoCmd.append(command)
-                time.sleep(0.3)#give controller time to start command
+                time.sleep(0.6)#give controller time to start command
                 self.InterfaceDone.wait(timeout=20)
             else:
                 self.GlobeVars.RoCmd.append(command)
@@ -75,6 +76,11 @@ class AiObserver:
         else:
             #print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
             return False
+    
+    def InterfaceGetValue(self, command, args=None):
+        print("get value")
+        
+    
     
     def RelToScreenSize(self, RelativePos):
         return int(self.imgWidth*RelativePos)
@@ -97,7 +103,9 @@ class AiObserver:
         return YNormWidthStrt+((YNormWidthEnd - YNormWidthStrt)/2)
         
     def AiMain(self):
-        self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+        self.Interface(ControllCMDs.EnableIR, WaitForDone=True)
+        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
+        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
         while self.runState.isSet():
             try:
                 #print("Ai Vision")
@@ -116,6 +124,7 @@ class AiObserver:
                
                 if self.mode == AiMode.Searching:
                     if results[0]:
+                        self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(results)
 
                         #DetWPos = self.RelToScreenSize(RelPos)
@@ -136,6 +145,7 @@ class AiObserver:
                 
                 elif self.mode == AiMode.EnRoute:
                     if results[0]:
+                        self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(results)
                         YRelPos = self.GetVerticalBox(results)
 
@@ -145,26 +155,39 @@ class AiObserver:
                             while state == False and self.runState.is_set():
                                 state = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
                                 time.sleep(0.01)
+                            print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.mode = AiMode.ArmDown
                             time.sleep(0.1)
-                            print("Into pickup mode")
                             continue
                         
                         self.Interface(ControllCMDs.MoveWheels, [20], WaitForDone=False)
                     else:
-                        self.Interface(ControllCMDs.MoveWheels, [-5], WaitForDone=False)
-                        print(f'lost backup maybe? {YRelPos}')
+                        self.AllowedLostFrames += 1
+                        if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
+                            print("LOST PAPER RETURNING TO SEARCH")
+                            self.mode = AiMode.Searching
+                        else:
+                            self.Interface(ControllCMDs.MoveWheels, [-10], WaitForDone=False)
                     time.sleep(0.1)
                     
                 elif self.mode == AiMode.ArmDown:
-                    
+                    if not self.ArmState == ArmStates.down:
+                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
+                        self.ArmState = ArmStates.down
                     if results[0]:
+                        self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(results)
-                        TurnAngle = self.TurnToWad(XRelPos)
-                        if TurnAngle > 1:
+                        TurnAngle = self.TurnToWad(XRelPos)/1.1
+                        if abs(TurnAngle) > 3:
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
                             continue
                         print("check distance")
+                    else:
+                        self.AllowedLostFrames += 1
+                        if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
+                            print("LOST PAPER RETURNING TO SEARCH")
+                            self.mode = AiMode.Searching
                         #check distance sensor for mesurements
                         #
                         #check ai if in need of correction
