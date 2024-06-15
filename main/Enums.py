@@ -18,6 +18,12 @@ class AiMode(Enum):#id
     HoldCheck = 5
     ReturnCarry = 6
     DropCheck = 7
+    
+class CamExposure(Enum):
+    default = 'default'
+    high = 'small'
+    medium = 'medium'
+    low = 'large'
 
 class ControllCMDs(Enum):
     Waiting = None #(internal)
@@ -25,8 +31,10 @@ class ControllCMDs(Enum):
     MoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 {a[0]} w3 {a[0]} w4 {a[0]};'
     StopWheels = lambda a:f'chassis wheel w1 0 w2 0 w3 0 w4 0;'
     SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
-    EnableIR = lambda a:f'ir_distance_sensor measure {a[0]};'
+    EnableIR = lambda a:f'ir_distance_sensor measure {a[0]};' #on, off
     GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
+    CamExposure = lambda a:f'camera exposure {a[0].value};' #(use enum) default, small, medium, large
+    EveryNonLiveComedyShowEver = lambda a:f'sound event applause {a[0]};' #no note needed (arg = int = amt claps)
     #ArmGrab = 0
     #ArmTransport = 0
     #ClawClose = 0

@@ -10,7 +10,7 @@ torch.device("cuda")
 print(f'CUDA SUPPORT: {torch.cuda.is_available()}')
 
 # model
-model = YOLO("./model/M2V9.pt")
+model = YOLO("./model/MM3V9.pt")
 
 # object classes
 classNames = ["paper"]
@@ -18,7 +18,7 @@ classNames = ["paper"]
 
 while True:
     success, img = cap.read()
-    results = model(img, stream=False)
+    results = model(img, stream=True, conf=0.3, iou=0.5, verbose=False)
 
     # coordinates
     for r in results:

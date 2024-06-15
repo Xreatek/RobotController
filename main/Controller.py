@@ -98,9 +98,8 @@ class RobotInterface:
                 buf = self.Connection.recv(1024)
                 buf.decode('utf-8')
                 
-                st = sys.getsizeof(buf)
                 #print(f'state buf: {buf}, cut:{buf[0]}')
-                if buf[0] == 49: #first value is 48 when false 49 when true
+                if buf[0] == 49: #first value is 48 when false 49 when true (i know its bad)
                     self.WaitForRoStatic.clear()
                     
             except Exception as e:
@@ -134,8 +133,8 @@ class RobotInterface:
                 time.sleep(0.2)
                 try:
                     buf = self.Connection.recv(1024)
-                    #BufContent = buf.decode('utf-8')
-                    #print(f'Contoler Reply: {BufContent}')
+                    BufContent = buf.decode('utf-8')
+                    print(f'Contoler Reply: {BufContent}')
                 except Exception as e:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 if self.WaitForRoStatic.is_set():

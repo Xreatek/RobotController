@@ -1,1 +1,3 @@
--read value to observer from robot
+-read value to observer from robot the same way i send commands
+
+-check ports if one is labeled as ir sensor

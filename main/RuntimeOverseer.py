@@ -11,13 +11,13 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
-        #self.RobotIp = '192.168.2.7' #home 
+        #self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = '192.168.2.7' #home 
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
         
-        self.AllowedLostFrames = 30 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
+        self.AllowedLostFrames = 1800 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
         
