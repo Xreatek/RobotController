@@ -28,12 +28,17 @@ class AiObserver:
         self.runState = self.GlobeVars.runState
         self.ImgStream = self.GlobeVars.ImgStream
         self.WaitForRoStatic = self.GlobeVars.WaitForRoStatic
+        
+        self.DataReq = self.GlobeVars.ExpcData
+        self.DataQueue = self.GlobeVars.InterfaceData
+        
         self.mode = AiMode.Searching
         
         #default set
         self.researchTimeout = 0
         self.ArmState = ArmStates.middle
         self.CloseBy = False
+        self.driving = False
         
         #Robot Interface Commands
         self.InterfaceDone = self.GlobeVars.RoDone
@@ -60,26 +65,38 @@ class AiObserver:
     
     def Interface(self, command, args=None, WaitForDone=False):
         #self.InterfaceDone.wait(timeout=10)
-        if self.InterfaceDone.is_set():
-            if args != None:
-                self.GlobeVars.RoCmdArgs.append(args)
-            if WaitForDone:
-                self.WaitForRoStatic.set()
-                self.GlobeVars.RoCmd.append(command)
-                time.sleep(0.6)#give controller time to start command
-                self.InterfaceDone.wait(timeout=20)
+        try:
+            if self.InterfaceDone.is_set():
+                if args != None:
+                    self.GlobeVars.RoCmdArgs.append(args)
+                if WaitForDone: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy waitfordone also wont.
+                    self.WaitForRoStatic.set()
+                    self.GlobeVars.RoCmd.append(command)
+                    time.sleep(0.6)#give controller time to start command
+                    self.InterfaceDone.wait(timeout=30)
+                else:
+                    self.GlobeVars.RoCmd.append(command)
+                    time.sleep(0.3)#give controller time to start command
+
+                print("Interface_Completed")
+                return True
             else:
-                self.GlobeVars.RoCmd.append(command)
-                time.sleep(0.3)#give controller time to start command
-            
-            print("Interface_Completed")
-            return True
-        else:
-            #print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
-            return False
+                #print(f"Interfaced before Cmd was done! cmd:{command}, args:{args}")
+                return False
+        except Exception as e:
+            print(f'Command interface error {e}, Trace:{traceback.format_exc()}')
+            print('Are you sure you are starting with a command that makes the robot move? Before setting WaitForDone to True?') #read "if waitfordone" line for explanation
+            self.runState.clear()
     
-    def InterfaceGetValue(self, command, args=None):
-        print("get value")
+    def DataInterface(self, command, args=None, WaitForDone=False):
+        self.DataReq.set()
+        success = self.Interface(command, args, WaitForDone)
+        print("DataInterface Start")
+        
+        RecvData = self.DataQueue.get()
+        
+        return success, RecvData
+        
         
     
     
@@ -129,11 +146,19 @@ class AiObserver:
         cv.waitKey(1)
         
     def AiMain(self):
-        #self.Interface(ControllCMDs.EnableIR, ['on'], WaitForDone=True)
+        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always start with move command
+        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+        
+        self.Interface(ControllCMDs.SensorIR, ['on'], WaitForDone=True)
         #temp testing things
-        #time.sleep(4)
-        #print('IrDistance')
-        #self.Interface(ControllCMDs.GetIRDistance, [1], WaitForDone=True)
+        time.sleep(4)
+        print('IrDistance')
+        while self.runState.is_set():
+            self.Interface(ControllCMDs.GetIRDistance, [1], WaitForDone=True)
+            success, result = self.DataInterface(ControllCMDs.GetIRDistance, [1])
+            if success:
+                print(f'Observer result: {result}')
+            time.sleep(3)
         #time.sleep(4)
         #print('clapping')
         #self.Interface(ControllCMDs.EveryNonLiveComedyShowEver, [10], WaitForDone=True)
@@ -141,8 +166,7 @@ class AiObserver:
         #time.sleep(4)
         #end test
         print('moving arm')
-        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
-        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+        
         
         self.Interface(ControllCMDs.CamExposure, [CamExposure.high])
         while self.runState.isSet():
@@ -163,7 +187,13 @@ class AiObserver:
                 results = self.model(InputImg, stream=False, conf=0.6, iou=0.5, verbose=False)
                 if self.Visualize:
                     self.VisualizeFound(results, InputImg)
+                
+                #actual observer
                 if self.mode == AiMode.Searching:
+                    if not self.ArmState == ArmStates.middle:
+                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+                        self.ArmState = ArmStates.middle
                     if results[0]:
                         self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(results)
@@ -213,6 +243,10 @@ class AiObserver:
                     time.sleep(0.1)
                     
                 elif self.mode == AiMode.ArmDown:
+                    if self.driving:
+                        while state == False and self.runState.is_set(): 
+                            state = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                            time.sleep(0.01)
                     if not self.ArmState == ArmStates.down:
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
@@ -230,6 +264,9 @@ class AiObserver:
                         if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
                             print("LOST PAPER RETURNING TO SEARCH")
                             #self.mode = AiMode.Searching
+                        else:
+                            self.driving = True
+                            self.Interface(ControllCMDs.MoveWheels, [-8], WaitForDone=False)
                         #check distance sensor for mesurements
                         #
                         #check ai if in need of correction

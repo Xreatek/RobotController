@@ -36,8 +36,11 @@ class RobotInterface:
         print("Robot Controller Connected")
         self.GlobVars.ConnState.set()
         
+        self.IsDataCMD = self.GlobVars.ExpcData
+        self.DataQueue = self.GlobVars.InterfaceData
+        
         self.stoppedStream = threading.Event()#to make sure controller doesnt end before the camera port has been closed
-        self.stoppedStream.set()
+        self.stoppedStream.set() #technically not running
         self.DisplayRawStream = self.MainSettings.DisplayRawStream
         if self.DisplayRawStream:
             self._RawStream = collections.deque(maxlen=1)
@@ -56,21 +59,26 @@ class RobotInterface:
         
         #Starts ai robot interface
         self.InterfaceLoop()
-            
+        #end of robot interface initiation
             
     def _MakeConnection(self):
         address = (self.MainSettings.RobotIp, int (self.MainSettings.RobotPort))
         Connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print("Connecting..")
+        bootupCMDs=list()
+        bootupCMDs.append(str('command;').encode('utf-8'))
+        bootupCMDs.append(str('stream on;').encode('utf-8'))
+        #bootupCMDs.append(str('ir_distance_sensor measure off;').encode('utf-8'))
         Connection.connect(address)
-        Connection.send('command;'.encode('utf-8'))
-        try:
-            buf = Connection.recv(1024)
-            print(buf.decode('utf-8'))
-        except socket.error as e:
-            print("Socket Error while connecting! :", e)
-            sys.exit(1)
-        Connection.send('stream on;'.encode('utf-8'))
+        for cmd in bootupCMDs:
+            print(cmd)
+            Connection.send(cmd)
+            try:
+                buf = Connection.recv(1024)
+                print(buf.decode('utf-8'))
+            except socket.error as e:
+                print("Socket Error while connecting! :", e)
+                sys.exit(1)
         print("Connection made!")
         return Connection
     
@@ -82,6 +90,7 @@ class RobotInterface:
                 self._ImgStream.append(Frame)
                 cv.imshow('IP Camera stream',Frame)
                 if cv.waitKey(1) == ord('q'):
+                    print('stream relay cleared')
                     self.runState.clear()
                     #self.GlobalVars.ConnState.clear() #cam does not look at runstate
                     
@@ -93,19 +102,20 @@ class RobotInterface:
     def WaitUntilStatic(self):
         while self.runState.is_set() and self.WaitForRoStatic.is_set():
             self.Connection.send(str('chassis status ?;').encode('utf-8'))
-            time.sleep(0.1)#let the command be received
+            #time.sleep(0.1)#let the command be received
             try:
                 buf = self.Connection.recv(1024)
                 buf.decode('utf-8')
+                print(f'Static state: {buf[0]-48}') #look at if below for explaination
                 
                 #print(f'state buf: {buf}, cut:{buf[0]}')
-                if buf[0] == 49: #first value is 48 when false 49 when true (i know its bad)
+                if buf[0] == 49: #first value is 48 when false 49 when true (i know its bad but it is what it is)
                     self.WaitForRoStatic.clear()
                     
             except Exception as e:
                 print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 self.runState.clear()
-            
+    
     
     def InterfaceLoop(self): 
         while self.GlobVars.ConnState.is_set() and self.runState.is_set(): 
@@ -130,11 +140,15 @@ class RobotInterface:
                 cmd = self.command(CmdArgs)
                 #print(cmd)
                 self.Connection.send(cmd.encode('utf-8')) #wait untill complete <- to do!
-                time.sleep(0.2)
+                #time.sleep(0.2)
                 try:
                     buf = self.Connection.recv(1024)
-                    BufContent = buf.decode('utf-8')
-                    print(f'Contoler Reply: {BufContent}')
+                    if self.IsDataCMD.is_set():
+                        BufContent = buf.decode('utf-8')
+                        print(f'Contoler Reply: {BufContent}')
+                        self.DataQueue.put(BufContent)
+                        self.IsDataCMD.clear()
+                        print("sent and cleared data buffer")
                 except Exception as e:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 if self.WaitForRoStatic.is_set():
@@ -143,6 +157,7 @@ class RobotInterface:
                 #print("Command finished!")
                 self.DoneCmd.set()
         print("Controller stopping..")
+        #self.Connection.send(str('ir_distance_sensor measure off;').encode('utf-8'))
         self.Connection.send(str('stream off;').encode('utf-8'))
         self.stoppedStream.wait(timeout=6)
         self.Connection.send(str('quit;').encode('utf-8'))

@@ -1,3 +1,2 @@
--read value to observer from robot the same way i send commands
-
--check ports if one is labeled as ir sensor
+-controller see if interfacedata expect is set and then send the recieved data back
+-observer wait for sent data
