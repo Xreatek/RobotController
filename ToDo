@@ -1,2 +1,3 @@
--controller see if interfacedata expect is set and then send the recieved data back
--observer wait for sent data
+-make recieved data into a float or int
+-get data at centering and take mesurements for when its looking at the floor vs min distance for holding something
+-then close hand

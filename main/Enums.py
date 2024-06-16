@@ -33,11 +33,12 @@ class ControllCMDs(Enum):
     SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
     CamExposure = lambda a:f'camera exposure {a[0].value};' #(use enum) default, small, medium, large
     SensorIR = lambda a:f'ir_distance_sensor measure {a[0]};' #on, off
-    GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
+    _GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
     #EveryNonLiveComedyShowEver = lambda a:f'sound event applause {a[0]};' #no note needed (arg = int = amt claps)
     
 #print(ControllCMDs.Rotate(5, 50))
 
-#class GetValueCMDs(Enum):
+class GetValueCMDs(Enum):
+    GetIRDistance = lambda Args, RetTyp:[ControllCMDs._GetIRDistance, Args, RetTyp] #1: args, 2:expected datatype
     
     

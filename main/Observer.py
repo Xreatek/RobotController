@@ -88,14 +88,38 @@ class AiObserver:
             print('Are you sure you are starting with a command that makes the robot move? Before setting WaitForDone to True?') #read "if waitfordone" line for explanation
             self.runState.clear()
     
-    def DataInterface(self, command, args=None, WaitForDone=False):
-        self.DataReq.set()
-        success = self.Interface(command, args, WaitForDone)
-        print("DataInterface Start")
-        
-        RecvData = self.DataQueue.get()
-        
-        return success, RecvData
+    def DataInterface(self, InList=None, WaitForDone=False): #InList 0:Command, 1:Args, 2:Type return data should be in
+        try:
+            if len(InList) < 2:
+                print('You forgot to give args and or excpected data type. Exiting..')
+                self.runState.clear()
+                return False, None
+            
+            Command = InList[0] #optimize in future
+            Args = InList[1] #put together
+            ReturnType = InList[2]
+            
+            print('DataInterface Start')
+            self.DataReq.set()
+            success = self.Interface(Command, Args, WaitForDone)
+            
+            print('Wait for data')
+            Data = self.DataQueue.get(timeout=30)
+            Data = str(Data)
+            Data = Data[:-2] #removes " ;" (incl the space)
+            if type(Data) != ReturnType:
+                if ReturnType == list:#lists will always return strings
+                    print("loop through string and append value inbetween spaces")
+                    self.runState.clear()
+                else:    
+                    FloatData = round(float(Data), 5) #intermediary, rounding to save frame time
+                    print(f'string: {Data} type:{type(Data)}')
+                    Data = ReturnType(FloatData)
+            
+        except Exception as e:
+            print(f'Observer datainterface error {e}, Trace: {traceback.format_exc()}')
+            self.runState.clear()
+        return success, Data
         
         
     
@@ -146,6 +170,7 @@ class AiObserver:
         cv.waitKey(1)
         
     def AiMain(self):
+        print('Observer Wake up')
         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always start with move command
         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
         
@@ -154,8 +179,9 @@ class AiObserver:
         time.sleep(4)
         print('IrDistance')
         while self.runState.is_set():
-            self.Interface(ControllCMDs.GetIRDistance, [1], WaitForDone=True)
-            success, result = self.DataInterface(ControllCMDs.GetIRDistance, [1])
+            #self.Interface(ControllCMDs.GetIRDistance, [1], WaitForDone=True)
+            print("start req")
+            success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
             if success:
                 print(f'Observer result: {result}')
             time.sleep(3)
@@ -165,7 +191,7 @@ class AiObserver:
         
         #time.sleep(4)
         #end test
-        print('moving arm')
+        #print('moving arm')
         
         
         self.Interface(ControllCMDs.CamExposure, [CamExposure.high])
