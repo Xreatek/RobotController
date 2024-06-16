@@ -23,8 +23,8 @@ class RobotInterface:
         self.MainSettings = MainSettings #saving Global settings in class
         self.GlobVars = GlobVars
         #genereal settings
-        self.Speed = self.MainSettings.Speed
-        self.AngleSpeed = self.MainSettings.AngleSpeed
+        self.Speed = self.MainSettings.Speed #wont change anything yet
+        self.AngleSpeed = self.MainSettings.AngleSpeed #wont change anything yet
         
         #Robot Interface
         self.runState = GlobVars.runState
@@ -106,7 +106,7 @@ class RobotInterface:
             try:
                 buf = self.Connection.recv(1024)
                 buf.decode('utf-8')
-                print(f'Static state: {buf[0]-48}') #look at if below for explaination
+                #print(f'Static state: {buf[0]-48}') #look at if below for explaination
                 
                 #print(f'state buf: {buf}, cut:{buf[0]}')
                 if buf[0] == 49: #first value is 48 when false 49 when true (i know its bad but it is what it is)
@@ -145,10 +145,10 @@ class RobotInterface:
                     buf = self.Connection.recv(1024)
                     if self.IsDataCMD.is_set():
                         BufContent = buf.decode('utf-8')
-                        print(f'Contoler Reply: {BufContent}')
+                        #print(f'Contoler Reply: {BufContent}')
                         self.DataQueue.put(BufContent)
                         self.IsDataCMD.clear()
-                        print("sent and cleared data buffer")
+                        #print("sent and cleared data buffer")
                 except Exception as e:
                     print(f"Problem sending stop stream {e}, Trace:{traceback.format_exc()}")
                 if self.WaitForRoStatic.is_set():

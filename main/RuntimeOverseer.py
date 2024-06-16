@@ -17,9 +17,10 @@ class Settings:
         
         self.RobotPort = '40923'
         
-        self.AllowedLostFrames = 1800 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
+        self.AllowedLostFrames = 120 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
+        self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: 
         
         self.Visualize = True
         self.DisplayRawStream = False
