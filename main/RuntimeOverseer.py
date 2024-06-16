@@ -11,19 +11,22 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        self.RobotIp = '192.168.2.7'#'10.249.48.13' #None or ip string '10.249.48.13' '10.249.48.14'
+        #self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = '192.168.2.7' #home 
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
         
+        self.AllowedLostFrames = 120 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
+        self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: 
         
         self.Visualize = True
         self.DisplayRawStream = False
-        self.DataCollector = False
+        self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = True #disable for testing
+        self.ReviverEnabled = False #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
@@ -34,11 +37,17 @@ class GlobalVariables:
         #Command Vars 
         self.RoCmd = collections.deque(maxlen=1) #max queue size of 1 so no backingup
         self.RoCmdArgs = collections.deque(maxlen=1) #use lists for multiple
+        
+        self.ExpcData = threading.Event() # excpect data if set controller will send data
+        self.InterfaceData = queue.Queue(maxsize=1) #controller data tunnel
+        
+        
         self.RoDone = threading.Event() #able to recieve new commands and not busy with prev
         self.RoDone.set() #default true
+        self.WaitForRoStatic = threading.Event()
         
         #Stream Vars
-        self.ImgStream = collections.deque(maxlen=2)
+        self.ImgStream = collections.deque(maxlen=3)
 
 class ThreadMasterClass:
     def __init__(self) -> None:
@@ -62,31 +71,38 @@ class ThreadMasterClass:
         self.Observer = threading.Thread(name='Observer', target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
         self.Observer.start()
         
-        #makes sure sdk keeps running
-        if self.Settings.ReviverEnabled:
-            self.Reviver()
+        #makes sure sdk keeps running or stops it if false when error occurs
+        self.Reviver()
     
     def Reviver(self):
         try:
-            while True:#self.GlobalVars.runState.is_set():
-                InterfaceAlive = self.RobotController.isAlive()
+            while self.GlobalVars.runState.is_set():#self.GlobalVars.runState.is_set():
+                InterfaceAlive = self.RobotController.is_alive()
                 #print(f'Interface state: {InterfaceAlive}')
                 if not InterfaceAlive:
-                    print("Stopped interface")
-                    #time.sleep(5)
-                    print("Restarting Controller Thread")
-                    self.GlobalVars.runState.set()
-                    self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
-                    self.RobotController.start() #make monitor that restarts interface when it crashes
-                    self.GlobalVars.ConnState.wait(timeout=10)
-                    #self.GlobalVars.RoCmdArgs.append(90)
-                    #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
-                    
+                    if self.Settings.ReviverEnabled:
+                        print("Stopped interface")
+                        #time.sleep(5)
+                        print("Restarting Controller Thread")
+                        #self.GlobalVars.runState.set()
+                        self.RobotController = threading.Thread(target=Controller.RobotInterface, args=[self.Settings, self.GlobalVars])
+                        self.RobotController.start() #make monitor that restarts interface when it crashes
+                        self.GlobalVars.ConnState.wait(timeout=10)
+                        #self.GlobalVars.RoCmdArgs.append(90)
+                        #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate)
+                    else:
+                        print("rip the camera crashed")
+                        self.GlobalVars.runState.clear()
+            
                 time.sleep(0.1)
+        except KeyboardInterrupt:
+            print('keyboard normal exit from reviver')
+            self.GlobalVars.runState.clear()
+            self.GlobalVars.ConnState.clear()
         except Exception as e:
             print(f'Error occured in reviver. {e}, Trace: {traceback.format_exc()}')
-            
-            
+        print(f'Reviver ended. Runstate: {self.GlobalVars.runState.is_set()}')
+
 
 if __name__ == "__main__":
     ThreadMasterClass()
@@ -110,23 +126,23 @@ if __name__ == "__main__":
 
 #-ai observer
 #√ waits untill connection is made
-#if in search mode (optional: wandering)
-#   waits for new camera frame
-#   then if something is found it calculates the rotation angle and sends that as a command to the robot as angle to turn (mean while no updates to camera(maybe))
-#   !once rotated as calculated mode is set to confirm mode 
+#√ if in search mode (optional: wandering)
+#√   waits for new camera frame
+#√   then if something is found it calculates the rotation angle and sends that as a command to the robot as angle to turn (mean while no updates to camera(maybe))
+#√   !once rotated as calculated mode is set to confirm mode 
 
-#elif in confirm mode 
-#   crop to only see directly infront of robot if something
-#   if paper is detected then: slowly move forward
-#       When paper is lost set arm into grabbing mode
-#       !then mode is set to preGrabConfirmMode
-#   else (if no paper is detected in crop mode)
-#       !mode is set to search mode
+#√elif in confirm mode 
+#!   crop or track to only see directly infront of robot if something
+#√   if paper is detected then: slowly move forward
+#√       When paper is lost set arm into grabbing mode
+#√       !then mode is set to preGrabConfirmMode
+#√   else (if no paper is detected in crop mode)
+#√       !mode is set to search mode
 
-#elif in preGrabConfirmMode
-#   check if paper is still detected and right infront of the robot
-#   if not^ then correct rotation until paper is right infront of the camera
-#   !when succeeded go into grabbing mode  
+#√elif in preGrabConfirmMode
+#√   check if paper is still detected and right infront of the robot
+#√   if not^ then correct rotation until paper is right infront of the camera
+#√   !when succeeded go into grabbing mode  
 
 #elif in grabbingMode
 #   drive towards paper checking each time if angle is still in acceptable margin of error 
