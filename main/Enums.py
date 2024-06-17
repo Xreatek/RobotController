@@ -40,7 +40,7 @@ class ControllCMDs(Enum):
     CloseGrip = lambda a:f'robotic_gripper close {a[0]};' #arg = 1-4 opening force
     _ChassisPos = lambda a:f'chassis position ?;'
     #MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]};' #the chaos option..
-    MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} vxy 50;'
+    MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} vxy 0.25;' #speed(vxy) is in METERS PER SEC
     
     #rotation query: https://robomaster-dev.readthedocs.io/en/latest/text_sdk/protocol_api.html#obtain-the-chassis-posture
     
