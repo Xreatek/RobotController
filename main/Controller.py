@@ -94,7 +94,7 @@ class RobotInterface:
                     self.runState.clear()
                     #self.GlobalVars.ConnState.clear() #cam does not look at runstate
                     
-            except IndexError: time.sleep(0.01);
+            except IndexError: time.sleep(0.0001);
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')
         cv.destroyAllWindows()
@@ -131,7 +131,7 @@ class RobotInterface:
             
             #command structs
             if self.command == ControllCMDs.Waiting:
-                time.sleep(0.3)# to not stress out controller
+                time.sleep(0.0001)# to not stress out controller
             else:
                 try:
                     CmdArgs = self.args.pop()

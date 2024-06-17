@@ -76,11 +76,11 @@ class AiObserver:
                 if WaitForDone: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy waitfordone also wont.
                     self.WaitForRoStatic.set()
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.6)#give controller time to start command
+                    time.sleep(0.05)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
                     self.InterfaceDone.wait(timeout=30)
                 else:
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.3)#give controller time to start command
+                    time.sleep(0.05)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
 
                 print("Interface_Completed")
                 return True
@@ -128,14 +128,12 @@ class AiObserver:
                         for i in RetList:
                             v = RetList.index(i)
                             RetList[v] = ReturnType.value[0](i) #transforms data in list to given type via enum
-                    print(RetList[0])
-                    print(RetList)
+                            
                     return True, RetList
-                    #self.runState.clear()
                 else:    
                     FloatData = round(float(Data), 5) #intermediary, rounding to save frame time
                     #print(f'string: {Data} type:{type(Data)}')
-                    Data = ReturnType(FloatData)
+                    Data = ReturnType.value(FloatData)
             
         except Exception as e:
             print(f'Observer datainterface error {e}, Trace: {traceback.format_exc()}')
@@ -185,7 +183,7 @@ class AiObserver:
                 fontScale = 0.6
                 color = (255, 0, 0)
                 thickness = 2
-                cv.putText(img, f'{self.classNames[cls]}, Conf:{confidence}', org, font, fontScale, color, thickness)
+                cv.putText(img, f'{self.classNames[cls]}, {confidence}', org, font, fontScale, color, thickness)
         cv.imshow('Webcam', img)
         cv.waitKey(1)
         
@@ -207,7 +205,7 @@ class AiObserver:
             
             except IndexError:
                 print('Failed getting frame')
-                time.sleep(0.03)
+                time.sleep(0.01)# to prevent freq errors
 
             except Exception as e:
                 print(f'GetNewFrame Error: {e}, {traceback.format_exc()}')
@@ -243,7 +241,7 @@ class AiObserver:
             
     def AiMain(self):
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [140,100], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [120,80], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
         
         self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
@@ -278,7 +276,7 @@ class AiObserver:
                     if random.randint(0,1):
                         print("captured frame")
                         cv.imwrite(f'./DataSet/{time.time()}_{datetime.datetime.now().day}_{datetime.datetime.now().month}.jpg', InputImg)
-                        time.sleep(0.5)
+                        time.sleep(0.5)#not in main run time
                     continue
                 
                 trackedPaper = self.GetTracked(results)
@@ -348,7 +346,7 @@ class AiObserver:
                             self.driving = False
                             print(f'SWITCHING TO "ArmDown" FROM {self.mode}')
                             self.mode = AiMode.ArmDown
-                            time.sleep(0.01)
+                            time.sleep(0.001)
                             continue
                         
                         CmdResult = self.Interface(ControllCMDs.MoveWheels, [20], WaitForDone=False)
@@ -373,6 +371,7 @@ class AiObserver:
                     if self.ArmState != ArmStates.downOpen:
                         CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=False)
                         if not CmdResult: continue;#cant pick up stuff with a closed hand
+                        time.sleep(0.1) #otherwise paper can be lost
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
                         self.ArmState = ArmStates.downOpen
@@ -402,7 +401,7 @@ class AiObserver:
                             
                         cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                         if not cmdSuccess or returnedIRData > self.irFloorDistance:
-                            print(f"after turning paper was lost.. IRDistance:{returnedIRData} (or get ir failed:{success})")
+                            print(f"after turning paper was lost.. IRDistance:{returnedIRData} (or get ir failed:{cmdSuccess})")
                             continue
                         
                         self.curIrDistance = returnedIRData+1 #to account for errors
@@ -422,7 +421,7 @@ class AiObserver:
                             if cmdResult:
                                 self.driving = True
                                 print("BACKING UP!")
-                                time.sleep(0.01)
+                                time.sleep(0.001)
                 
                 
                 elif self.mode == AiMode.PickingUp:
@@ -475,16 +474,16 @@ class AiObserver:
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
-                    #cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.int)) #no args
-                    #if cmdSuccess:
-                    #    print(f'Possitional data {retData}')
+                    cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.int)) #no args
+                    if cmdSuccess:
+                        print(f'Possitional data {retData}')
                     print('check if holding')
-                    time.sleep(1)
+                    time.sleep(1) #temp
                         
                         
                     
             except IndexError:
-                time.sleep(0.05)
+                time.sleep(0.01)
                 continue
             except Exception as e:
                 print(f'Error in Ai runtime {e},  Trace:{traceback.format_exc()}')
