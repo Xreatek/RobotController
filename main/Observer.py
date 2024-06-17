@@ -218,7 +218,8 @@ class AiObserver:
             
     def AiMain(self):
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always start with move command
+        self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
+        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
         
         self.Interface(ControllCMDs.SensorIR, ['on'], WaitForDone=True)
@@ -285,6 +286,9 @@ class AiObserver:
                 elif self.mode == AiMode.EnRoute:
                     
                     if not self.ArmState == ArmStates.middle:
+                        CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
+                        if not CmdResult: #looks wierd if still open
+                            continue
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
                         self.ArmState = ArmStates.middle
@@ -338,10 +342,12 @@ class AiObserver:
                         while state == False and self.runState.is_set(): 
                             state = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
                             time.sleep(0.01)
-                    if not self.ArmState == ArmStates.down:
+                    if self.ArmState != ArmStates.downOpen:
+                        CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=False)
+                        if not CmdResult: continue;#cant pick up stuff with a closed hand
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
-                        self.ArmState = ArmStates.down
+                        self.ArmState = ArmStates.downOpen
                         
                         
                     success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
@@ -388,13 +394,14 @@ class AiObserver:
                 
                 
                 elif self.mode == AiMode.PickingUp:
-                    success, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
-                    if returnedIRData > self.curIrDistance or not success: #checking if IR didnt loose paper.
-                        print(f"IR lost paper.. checking ai if paper is still there.. IRDistance:{returnedIRData} (or get ir failed:{success})")
+                    success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
+                    if irDist > self.curIrDistance or not success: #checking if IR didnt loose paper.
+                        print(f"IR lost paper.. checking ai if paper is still there.. IRDistance:{irDist} (or get ir failed:{success})")
                         if self.driving:
                             CmdResult = self.Interface(ControllCMDs.MoveWheels, [0], WaitForDone=False)
                             if CmdResult:
                                 self.driving = False
+                            continue #otherwise rotate would be off
                         
                         if trackedPaper != None:
                             XRelPos = self.GetHorizontalBox(trackedPaper)
@@ -406,6 +413,33 @@ class AiObserver:
                         print('CATASTOPIC FAILURE: Ir Sensor lost paper now returing to searching..')
                         self.mode = AiMode.Searching
                         continue
+                    else:
+                        if irDist < 5:
+                            if self.ArmState != ArmStates.downClosed:
+                                print("closing hand..")
+                                CmdResult = self.Interface(ControllCMDs.MoveWheels, [1], WaitForDone=True)
+                                if not CmdResult: continue;
+                                print('hand closed')
+                                self.ArmState = ArmStates.downClosed
+                                self.mode = AiMode.HoldCheck
+                        else:
+                            print(f'On track too paper {irDist}')
+                            if not self.driving:
+                                CmdResult = self.Interface(ControllCMDs.MoveWheels, [10], WaitForDone=False)
+                                if CmdResult:
+                                    self.driving = True
+                
+                
+                elif self.mode == AiMode.HoldCheck:
+                    if self.ArmState != ArmStates.carrying:
+                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
+                        CmdState = self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
+                        if CmdState:
+                            self.ArmState = ArmStates.carrying
+                            continue
+                    print('check if holding')
+                    time.sleep(1)
+                        
                     
                     
                     
