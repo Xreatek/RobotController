@@ -371,7 +371,7 @@ class AiObserver:
                     if self.ArmState != ArmStates.downOpen:
                         CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=False)
                         if not CmdResult: continue;#cant pick up stuff with a closed hand
-                        time.sleep(0.1) #otherwise paper can be lost
+                        
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
                         self.ArmState = ArmStates.downOpen
@@ -448,15 +448,19 @@ class AiObserver:
                     else: #if still on track to paper
                         if irDist < 6: #make sure paper wads are big
                             if self.ArmState != ArmStates.downClosed:
-                                print("Detected paper in hand stopping robot..")
-                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
-                                if not cmdSuccess: continue
-                                self.driving = False
                                 print("closing hand..")
-                                cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForDone=True)
+                                cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForDone=False)
                                 if not cmdSuccess: continue;
                                 print('hand closed')
                                 self.ArmState = ArmStates.downClosed
+                            
+                            if self.driving:
+                                print("stopping robot..")
+                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                                if not cmdSuccess: continue
+                                self.driving = False
+                                print("robot static")
+                                
                                 print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
                                 self.mode = AiMode.HoldCheck
                         else:
@@ -474,7 +478,7 @@ class AiObserver:
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
-                    cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.int)) #no args
+                    cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
                     if cmdSuccess:
                         print(f'Possitional data {retData}')
                     print('check if holding')
