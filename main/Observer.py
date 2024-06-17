@@ -175,6 +175,29 @@ class AiObserver:
         cv.imshow('Webcam', img)
         cv.waitKey(1)
         
+    def GetNewFrame(self):
+        while self.runState.is_set():
+            try:
+                InputImg = self.ImgStream.popleft()
+                InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
+                #print(f'Img size: {InputImg.shape}')
+
+                results = self.model(InputImg, stream=False, conf=0.6, iou=0.5, verbose=False)
+
+                if self.Visualize:
+                    self.VisualizeFound(results, InputImg)
+                
+                return InputImg, results
+            
+            except IndexError:
+                print('Failed getting frame')
+                time.sleep(0.001)
+
+            except Exception as e:
+                print(f'GetNewFrame Error: {e}, {traceback.format_exc()}')
+                self.runState.clear()
+                return None, None
+            
     def AiMain(self):
         print('Observer Wake up')
         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always start with move command
@@ -195,9 +218,7 @@ class AiObserver:
         while self.runState.isSet():
             try:
                 #print("Ai Vision")
-                InputImg = self.ImgStream.popleft()
-                InputImg = InputImg[40:680, 160:1120] #sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
-                #print(f'Img size: {InputImg.shape}')
+                InputImg, results = self.GetNewFrame()
                 #                   Y(120-600) X(320-960)
                 #for wad angle 120/2=60 320/2=160
                 #Dataset collection
@@ -207,9 +228,6 @@ class AiObserver:
                         cv.imwrite(f'./DataSet/{time.time()}_{datetime.datetime.now().day}_{datetime.datetime.now().month}.jpg', InputImg)
                         time.sleep(0.5)
                     continue
-                results = self.model(InputImg, stream=False, conf=0.6, iou=0.5, verbose=False)
-                if self.Visualize:
-                    self.VisualizeFound(results, InputImg)
                 
                 
                 #actual observer
@@ -246,11 +264,17 @@ class AiObserver:
                 
                 
                 elif self.mode == AiMode.EnRoute:
+                    
+                    if not self.ArmState == ArmStates.middle:
+                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+                        self.ArmState = ArmStates.middle
+                        
                     if results[0]:
                         self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(results)
                         YRelPos = self.GetVerticalBox(results)
-                        
+                    
                         TurnAngle = self.TurnToWad(XRelPos)
                         if abs(TurnAngle) > 5:
                             if self.driving:
@@ -358,9 +382,32 @@ class AiObserver:
                 
                 elif self.mode == AiMode.PickingUp:
                     #now only relying on distance censor.
-                    print('picking up')
-                    time.sleep(1)
-                    
+                    success, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
+                    if returnedIRData > self.curIrDistance or not success:
+                        print(f"IR lost paper.. checking ai if paper is still there.. IRDistance:{returnedIRData} (or get ir failed:{success})")
+                        
+                        if self.driving:
+                            CmdResult = self.Interface(ControllCMDs.MoveWheels, [0], WaitForDone=False)
+                            if CmdResult:
+                                self.driving = True
+                        
+                        TurnAngle = 360 
+                        ResultNum = -1
+                        for result in results:
+                            XRelPos = self.GetHorizontalBox(results)
+                            TempAngle = self.TurnToWad(XRelPos)
+                            if TempAngle < TurnAngle:
+                                ResultNum = results.index(result)
+                                TurnAngle = TempAngle
+                        
+                        if TempAngle < 25:
+                            results[ResultNum]
+                            
+                                
+                        #check if ai can see paper
+                        self.mode = AiMode.Searching
+                        continue
+                        
                     
             except IndexError:
                 time.sleep(0.05)
