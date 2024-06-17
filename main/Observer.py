@@ -19,7 +19,7 @@ class AiObserver:
         
         #object detector
         if not self.DataCollector:
-            self.model = YOLO("./Model/XM5V9.pt") #best for now: M2V9 imgsz:640
+            self.model = YOLO("./Model/MXM5V9.pt")
             self.model.cuda(0)
             self.model.info()
             self.classNames = ["paper"]
@@ -194,7 +194,7 @@ class AiObserver:
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
 
-                results = self.model(InputImg, stream=False, conf=0.15, iou=0.70, verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.6, iou=0.70, verbose=False)
                 #results2 = self.model(InputImg, stream=False, conf=0.01, iou=0.6, verbose=False) #this suprisingly works
                 #results = results1 + results2
 
@@ -282,7 +282,9 @@ class AiObserver:
                 trackedPaper = self.GetTracked(results)
                 if trackedPaper == None:
                     print("LOST PAPER")
-                
+                    
+                time.sleep(0.05)
+                continue
                 #actual observer
                 if self.mode == AiMode.Searching:
                     if self.driving:
@@ -505,11 +507,8 @@ class AiObserver:
                         cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my], WaitForDone=False)
                     else:
                         print('back at 0')
+                      
                     
-                        
-
-                        
-                        
                     
             except IndexError:
                 time.sleep(0.01)

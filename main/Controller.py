@@ -94,7 +94,7 @@ class RobotInterface:
                     self.runState.clear()
                     #self.GlobalVars.ConnState.clear() #cam does not look at runstate
                     
-            except IndexError: time.sleep(0.0001);
+            except IndexError: time.sleep(0.001);
             except Exception as e:
                 print(f'Caught error: {e} Traceback: {traceback.format_exc()}')
         cv.destroyAllWindows()
