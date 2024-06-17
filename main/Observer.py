@@ -136,8 +136,8 @@ class AiObserver:
     def TurnToWad(self, RelativePos): #returns angle required to turn
         return (RelativePos - 0.5) * 60 #the fov of the cam is 120 
 
-    def GetHorizontalBox(self, results):
-        boxes = results[0].boxes
+    def GetHorizontalBox(self, result):
+        boxes = result.boxes
         
         XNormWidthStrt = round(float(boxes.xyxyn[0,0].cpu()), 3)
         XNormWidthEnd = round(float(boxes.xyxyn[0,2].cpu()), 3)
@@ -197,6 +197,24 @@ class AiObserver:
                 print(f'GetNewFrame Error: {e}, {traceback.format_exc()}')
                 self.runState.clear()
                 return None, None
+    
+    def GetTracked(self, results): #gets paper it has to rotate as little as possible for
+        if results[0] != None:
+            TurnAngle = 360 
+            ResultNum = -1
+            for result in results:
+                XRelPos = self.GetHorizontalBox(result)
+                TempAngle = self.TurnToWad(XRelPos)
+                if TempAngle < TurnAngle:
+                    ResultNum = results.index(result)
+                    TurnAngle = TempAngle
+
+            trackedPaper = results[ResultNum]
+        else:
+            trackedPaper = None
+            
+        return trackedPaper
+        
             
     def AiMain(self):
         print('Observer Wake up')
@@ -229,6 +247,7 @@ class AiObserver:
                         time.sleep(0.5)
                     continue
                 
+                trackedPaper = self.GetTracked(results)
                 
                 #actual observer
                 if self.mode == AiMode.Searching:
@@ -241,9 +260,9 @@ class AiObserver:
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
                         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
                         self.ArmState = ArmStates.middle
-                    if results[0]:
+                    if trackedPaper != None:
                         self.AllowedLostFrames = 0
-                        XRelPos = self.GetHorizontalBox(results)
+                        XRelPos = self.GetHorizontalBox(trackedPaper)
 
                         #DetWPos = self.RelToScreenSize(RelPos)
                         #image = cv.circle(InputImg, (DetWPos,480), radius=5, color=(0, 0, 255), thickness=10)
@@ -270,9 +289,9 @@ class AiObserver:
                         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
                         self.ArmState = ArmStates.middle
                         
-                    if results[0]:
+                    if trackedPaper != None:
                         self.AllowedLostFrames = 0
-                        XRelPos = self.GetHorizontalBox(results)
+                        XRelPos = self.GetHorizontalBox(trackedPaper)
                         YRelPos = self.GetVerticalBox(results)
                     
                         TurnAngle = self.TurnToWad(XRelPos)
@@ -330,9 +349,9 @@ class AiObserver:
                        print(f'Observer result: {result}')
                        
                        
-                    if results[0]:
+                    if trackedPaper != None:
                         self.AllowedLostFrames = 0
-                        XRelPos = self.GetHorizontalBox(results)
+                        XRelPos = self.GetHorizontalBox(trackedPaper)
                         TurnAngle = self.TurnToWad(XRelPos)
                         if abs(TurnAngle) > 1.6:
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
@@ -340,18 +359,6 @@ class AiObserver:
                         
                         print("Continuing to experimental!")
                         
-
-                        TurnAngle = 360 
-                        ResultNum = -1 #to get index of prop closest to center
-                        for result in results:
-                            XRelPos = self.GetHorizontalBox(results)
-                            TempAngle = self.TurnToWad(XRelPos)
-                            if TempAngle < TurnAngle:
-                                ResultNum = results.index(result)
-                                TurnAngle = TempAngle
-
-                        if ResultNum == -1:
-                            continue
                         #now posibly center to prop
                         if abs(TurnAngle) > 1:
                             print('TURNING FOR CORRECTION')
@@ -381,32 +388,28 @@ class AiObserver:
                 
                 
                 elif self.mode == AiMode.PickingUp:
-                    #now only relying on distance censor.
                     success, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
-                    if returnedIRData > self.curIrDistance or not success:
+                    if returnedIRData > self.curIrDistance or not success: #checking if IR didnt loose paper.
                         print(f"IR lost paper.. checking ai if paper is still there.. IRDistance:{returnedIRData} (or get ir failed:{success})")
-                        
                         if self.driving:
                             CmdResult = self.Interface(ControllCMDs.MoveWheels, [0], WaitForDone=False)
                             if CmdResult:
-                                self.driving = True
+                                self.driving = False
                         
-                        TurnAngle = 360 
-                        ResultNum = -1
-                        for result in results:
-                            XRelPos = self.GetHorizontalBox(results)
-                            TempAngle = self.TurnToWad(XRelPos)
-                            if TempAngle < TurnAngle:
-                                ResultNum = results.index(result)
-                                TurnAngle = TempAngle
-                        
-                        if TempAngle < 25:
-                            results[ResultNum]
-                            
+                        if trackedPaper != None:
+                            XRelPos = self.GetHorizontalBox(trackedPaper)
+                            TurnAngle = self.TurnToWad(XRelPos)
+                            if abs(TurnAngle) < 10:
+                                print('RECOVERD FROM CATASTOPIC FAILURE: Ir Sensor lost paper but should be corrected now.')
+                                self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
                                 
-                        #check if ai can see paper
+                        print('CATASTOPIC FAILURE: Ir Sensor lost paper now returing to searching..')
                         self.mode = AiMode.Searching
                         continue
+                    
+                    
+                    
+                    
                         
                     
             except IndexError:

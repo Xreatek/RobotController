@@ -2,6 +2,6 @@ in grabber
 -get data and take mesurements at min distance for holding something
 -then close hand
 
-
+-wall detection
 
 -when switching to PickingUp mode i could save up results from 5~ frames to make sure ai wont just miss the paper and screw up
