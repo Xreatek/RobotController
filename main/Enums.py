@@ -39,7 +39,11 @@ class ControllCMDs(Enum):
     OpenGrip = lambda a:f'robotic_gripper open {a[0]};' #arg = 1-4 closing force
     CloseGrip = lambda a:f'robotic_gripper close {a[0]};' #arg = 1-4 opening force
     _ChassisPos = lambda a:f'chassis position ?;'
-    MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]} z {a[2]};'
+    #MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]};' #the chaos option..
+    MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} vxy 50;'
+    
+    #rotation query: https://robomaster-dev.readthedocs.io/en/latest/text_sdk/protocol_api.html#obtain-the-chassis-posture
+    
     #EveryNonLiveComedyShowEver = lambda a:f'sound event applause {a[0]};' #no note needed (arg = int = amt claps)
     
 #print(ControllCMDs.Rotate(5, 50))

@@ -499,10 +499,10 @@ class AiObserver:
                     cordGoal = [0,0,0] #x,y,z
                     
                     if (abs(retCord[0]) - abs(cordGoal[0])) > 0.5 or (abs(retCord[1]) - abs(cordGoal[1])) > 0.01:
-                        mx = (retCord[0] - cordGoal[0])/2
-                        my = (retCord[1] - cordGoal[1])/2
+                        mx = (retCord[0] - cordGoal[0])
+                        my = (retCord[1] - cordGoal[1])
 
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,0], WaitForDone=False)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my], WaitForDone=False)
                     else:
                         print('back at 0')
                     
