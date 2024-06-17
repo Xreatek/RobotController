@@ -194,7 +194,7 @@ class AiObserver:
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
 
-                results = self.model(InputImg, stream=False, conf=0.01, iou=0.7, verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.15, iou=0.70, verbose=False)
                 #results2 = self.model(InputImg, stream=False, conf=0.01, iou=0.6, verbose=False) #this suprisingly works
                 #results = results1 + results2
 
@@ -369,7 +369,7 @@ class AiObserver:
                 elif self.mode == AiMode.ArmDown:
                     
                     if self.ArmState != ArmStates.downOpen:
-                        CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=False)
+                        CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=True)
                         if not CmdResult: continue;#cant pick up stuff with a closed hand
                         
                         self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
@@ -455,14 +455,12 @@ class AiObserver:
                                 self.ArmState = ArmStates.downClosed
                             
                             if self.driving:
-                                print("stopping robot..")
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
                                 if not cmdSuccess: continue
                                 self.driving = False
-                                print("robot static")
                                 
-                                print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
-                                self.mode = AiMode.HoldCheck
+                            print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
+                            self.mode = AiMode.HoldCheck
                         else:
                             print(f'On track too paper IrDistance:{irDist}, driving state: {self.driving}')
                             if not self.driving:
@@ -481,7 +479,15 @@ class AiObserver:
                     cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
                     if cmdSuccess:
                         print(f'Possitional data {retData}')
-                    print('check if holding')
+                    
+                    
+                    print('check if holding')    
+                    cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
+                    if not cmdSuccess or returnedIRData > self.irFloorDistance:
+                        print(f"after turning paper was lost.. IRDistance:{returnedIRData} (getIr success state:{cmdSuccess})")
+                        self.mode = AiMode.Searching
+                    print(f'Checking ir distance: {returnedIRData}')
+                    
                     time.sleep(1) #temp
                         
                         
