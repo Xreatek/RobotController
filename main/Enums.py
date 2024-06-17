@@ -4,12 +4,12 @@ class ConnType(Enum):#id
     InternalRoutor = 1
     ExternalRouter = 2
     
-class ArmStates(Enum): #0 = no paper, 1 = holding paper, 2 = grabbing or dropping paper
-    top = 2
-    middle = 0
-    carrying = 1
-    downOpen = 2
-    downClosed = 1
+class ArmStates(Enum): #need to be sepatrate ids
+    top = 0
+    middle = 1
+    carrying = 2
+    downOpen = 3
+    downClosed = 4
 
 class AiMode(Enum):#id
     Searching = 0
