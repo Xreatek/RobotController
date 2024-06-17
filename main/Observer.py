@@ -114,10 +114,24 @@ class AiObserver:
                 print('recieved data mismatch this probably isnt your fault. The data the robot sent got mixed up and now it is your problem. \n(use a state check or a none check for your data.)')
                 return False, None
             Data = Data[:-2] #removes " ;" (incl the space)
-            if type(Data) != ReturnType:
-                if ReturnType == list:#lists will always return strings
-                    print("loop through string and append value inbetween spaces")
-                    self.runState.clear()
+            if type(Data) != ReturnType.value:
+                if type(ReturnType.value) == list:#lists will always return strings
+                    
+                    RetList = Data.split() #splits up the recieved data into a list
+                    
+                    if ReturnType.value[0] == int:
+                        for i in RetList:
+                            v = RetList.index(i)
+                            i = float(i) #otherwise int transformation will error
+                            RetList[v] = int(i)
+                    else:    
+                        for i in RetList:
+                            v = RetList.index(i)
+                            RetList[v] = ReturnType.value[0](i) #transforms data in list to given type via enum
+                    print(RetList[0])
+                    print(RetList)
+                    return True, RetList
+                    #self.runState.clear()
                 else:    
                     FloatData = round(float(Data), 5) #intermediary, rounding to save frame time
                     #print(f'string: {Data} type:{type(Data)}')
@@ -130,13 +144,11 @@ class AiObserver:
         return success, Data
         
         
-    
-    
     def RelToScreenSize(self, RelativePos):
         return int(self.imgWidth*RelativePos)
     
     def TurnToWad(self, RelativePos): #returns angle required to turn
-        return (RelativePos - 0.5) * 90 #the fov of the cam is 120 
+        return (RelativePos - 0.5) * 75 #the fov of the cam is 120
 
     def GetHorizontalBox(self, result):
         boxes = result.boxes
@@ -184,7 +196,9 @@ class AiObserver:
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
 
-                results = self.model(InputImg, stream=False, conf=0.2, iou=0.8, verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.01, iou=0.7, verbose=False)
+                #results2 = self.model(InputImg, stream=False, conf=0.01, iou=0.6, verbose=False) #this suprisingly works
+                #results = results1 + results2
 
                 if self.Visualize:
                     self.VisualizeFound(results, InputImg)
@@ -213,7 +227,7 @@ class AiObserver:
                 relBoxSizeX = (XNormWidthEnd - XNormWidthStrt)
                 XRelPos = XNormWidthStrt+(relBoxSizeX/2)
                 TempAngle = self.TurnToWad(XRelPos)
-                if TempAngle < TurnAngle and relBoxSizeX < 0.7:#70% of scren to prevent it from seleceting whole screen.
+                if TempAngle < TurnAngle and relBoxSizeX < 0.85: #85% of scren to prevent it from seleceting whole screen.
                     ResultNum = results.index(result)
                     TurnAngle = TempAngle
 
@@ -229,16 +243,24 @@ class AiObserver:
             
     def AiMain(self):
         print('Observer Wake up')
-        self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
-        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [140,100], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
         self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+        
+        self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
         
         self.Interface(ControllCMDs.SensorIR, ['on'], WaitForDone=True)
         print('Observer woke up')
-        
-        #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
+        #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
         #if success:
         #   print(f'Observer result: {result}')
+        
+        cmdSuccess = False
+        while not cmdSuccess and self.runState.is_set():
+            cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
+            if cmdSuccess:
+                print(f'Possitional data: {retData} , Type:{type(retData[0])}')
+                break
+            time.sleep(0.001)
         
         #print('clapping')
         #self.Interface(ControllCMDs.EveryNonLiveComedyShowEver, [10], WaitForDone=True) sadly not working for some reason
@@ -340,8 +362,8 @@ class AiObserver:
                             self.mode = AiMode.Searching
                         else:
                             print('EnRoute: Setting wheels speed to -15')
-                            CmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
-                            if CmdResult:
+                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
+                            if cmdResult:
                                 self.driving = True
                     #time.sleep(0.001)
                     
@@ -378,7 +400,7 @@ class AiObserver:
                             print('TURNING FOR CORRECTION')
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
                             
-                        cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
+                        cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                         if not cmdSuccess or returnedIRData > self.irFloorDistance:
                             print(f"after turning paper was lost.. IRDistance:{returnedIRData} (or get ir failed:{success})")
                             continue
@@ -396,15 +418,15 @@ class AiObserver:
                             print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.mode = AiMode.Searching
                         else:
-                            CmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
-                            if CmdResult:
+                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
+                            if cmdResult:
                                 self.driving = True
                                 print("BACKING UP!")
                                 time.sleep(0.01)
                 
                 
                 elif self.mode == AiMode.PickingUp:
-                    success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
+                    success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                     if not success or irDist > self.curIrDistance: #checking if IR didnt loose paper.
                         print(f"IR lost paper.. checking ai if paper is still there.. IRDistance:{irDist} (or get ir failed:{success})")
                         if self.driving:
@@ -425,7 +447,7 @@ class AiObserver:
                         self.mode = AiMode.Searching
                         continue
                     else: #if still on track to paper
-                        if irDist < 7: #make sure paper wads are big
+                        if irDist < 6: #make sure paper wads are big
                             if self.ArmState != ArmStates.downClosed:
                                 print("Detected paper in hand stopping robot..")
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
@@ -453,6 +475,9 @@ class AiObserver:
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
+                    #cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.int)) #no args
+                    #if cmdSuccess:
+                    #    print(f'Possitional data {retData}')
                     print('check if holding')
                     time.sleep(1)
                         

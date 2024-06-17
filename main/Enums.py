@@ -38,11 +38,19 @@ class ControllCMDs(Enum):
     _GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
     OpenGrip = lambda a:f'robotic_gripper open {a[0]};' #arg = 1-4 closing force
     CloseGrip = lambda a:f'robotic_gripper close {a[0]};' #arg = 1-4 opening force
+    _ChassisPos = lambda a:f'chassis position ?;'
     #EveryNonLiveComedyShowEver = lambda a:f'sound event applause {a[0]};' #no note needed (arg = int = amt claps)
     
 #print(ControllCMDs.Rotate(5, 50))
 
 class GetValueCMDs(Enum):
     GetIRDistance = lambda Args, RetTyp:[ControllCMDs._GetIRDistance, Args, RetTyp] #1: args, 2:expected datatype
+    ChassisPos = lambda Args, RetTyp:[ControllCMDs._ChassisPos, Args, RetTyp]#unused args
     
-    
+class ReturnTypes(Enum): #ingenious if i say so myself
+    list_str = [str]
+    list_float = [float]
+    list_int = [int]
+    str = str
+    float = float
+    int = int
