@@ -476,19 +476,38 @@ class AiObserver:
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
-                    cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
-                    if cmdSuccess:
-                        print(f'Possitional data {retData}')
-                    
                     
                     print('check if holding')    
                     cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
-                    if not cmdSuccess or returnedIRData > self.irFloorDistance:
-                        print(f"after turning paper was lost.. IRDistance:{returnedIRData} (getIr success state:{cmdSuccess})")
+                    if not cmdSuccess or returnedIRData > 8:
+                        print(f"After moving arm up paper was lost.. IRDistance:{returnedIRData} (getIr success state:{cmdSuccess})")
+                        print(f'SWITCHING TO "Searching" FROM {self.mode}')
                         self.mode = AiMode.Searching
-                    print(f'Checking ir distance: {returnedIRData}')
+                    print(f'IR distance: {returnedIRData}')
+                    print(f'SWITCHING TO "ReturnCarry" FROM {self.mode}')
+                    self.mode = AiMode.ReturnCarry
+                
+                
+                elif self.mode == AiMode.ReturnCarry:
+                    cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
+                    if not cmdSuccess: 
+                        print("problem getting cord.")
+                        continue
                     
-                    time.sleep(1) #temp
+                    print(f'current possitional cord {retCord}')
+                    
+                    cordGoal = [0,0,0] #x,y,z
+                    
+                    if (abs(retCord[0]) - abs(cordGoal[0])) > 0.5 or (abs(retCord[1]) - abs(cordGoal[1])) > 0.01:
+                        mx = (retCord[0] - cordGoal[0])/2
+                        my = (retCord[1] - cordGoal[1])/2
+
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,0], WaitForDone=False)
+                    else:
+                        print('back at 0')
+                    
+                        
+
                         
                         
                     

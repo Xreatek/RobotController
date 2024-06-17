@@ -39,6 +39,7 @@ class ControllCMDs(Enum):
     OpenGrip = lambda a:f'robotic_gripper open {a[0]};' #arg = 1-4 closing force
     CloseGrip = lambda a:f'robotic_gripper close {a[0]};' #arg = 1-4 opening force
     _ChassisPos = lambda a:f'chassis position ?;'
+    MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]} z {a[2]};'
     #EveryNonLiveComedyShowEver = lambda a:f'sound event applause {a[0]};' #no note needed (arg = int = amt claps)
     
 #print(ControllCMDs.Rotate(5, 50))
