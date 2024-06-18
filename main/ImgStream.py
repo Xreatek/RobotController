@@ -50,6 +50,7 @@ class Stream:
                     self.runState.clear()
         except Exception as e:
             print(f'Error in decoding stream: {e}, {traceback.format_exc()}')
+        print("STREAM CLOSING")
         CamStream.close()
         self.streamStopped.set()
                 

@@ -159,6 +159,11 @@ class RobotInterface:
         print("Controller stopping..")
         #self.Connection.send(str('ir_distance_sensor measure off;').encode('utf-8'))
         self.Connection.send(str('stream off;').encode('utf-8'))
+        try:
+            self._Stream.join(timeout=20)
+        except TimeoutError:
+            print('could not wait for stream to end. TimeoutError')
+            self.runState.clear()
         self.stoppedStream.wait(timeout=6)
         self.Connection.send(str('quit;').encode('utf-8'))
         time.sleep(0.5) #make sure close doesnt arive ealier

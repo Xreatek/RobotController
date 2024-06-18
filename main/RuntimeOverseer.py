@@ -11,8 +11,8 @@ import Observer
 class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
-        #self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
-        self.RobotIp = '192.168.2.7' #home 
+        self.RobotIp = '10.249.48.13' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        #self.RobotIp = '192.168.2.7' #home 
         #self.HostIp = '192.168.2.28' #None or ip string
         
         self.RobotPort = '40923'
@@ -20,13 +20,13 @@ class Settings:
         self.AllowedLostFrames = 10 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
         self.Speed = 50 #rpm (keep in mind angle and speed are calculated the same)
         self.AngleSpeed = 25
-        self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: 
+        self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: (low arm level)
         
         self.Visualize = True
         self.DisplayRawStream = False
         self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = False #disable for testing
+        self.ReviverEnabled = True #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
@@ -47,7 +47,7 @@ class GlobalVariables:
         self.WaitForRoStatic = threading.Event()
         
         #Stream Vars
-        self.ImgStream = collections.deque(maxlen=3)
+        self.ImgStream = collections.deque(maxlen=2)
 
 class ThreadMasterClass:
     def __init__(self) -> None:
@@ -63,9 +63,6 @@ class ThreadMasterClass:
             print(f'Problem waiting for connection to be made. | {e}')
             exit(503) #connection problems error code
         print('Controller running')
-        
-        #self.GlobalVars.RoCmdArgs.append(90)
-        #self.GlobalVars.RoCmd.append(ControllCMDs.Rotate) #90 degree rotation test
         
         #starting observer
         self.Observer = threading.Thread(name='Observer', target=Observer.AiObserver, args=[self.Settings, self.GlobalVars])
