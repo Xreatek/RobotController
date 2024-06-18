@@ -566,7 +566,7 @@ class AiObserver:
                 
                 
                 elif self.mode == AiMode.ReturnCarry:
-                    cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
+                    cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args ![y,x]!
                     if not cmdSuccess: 
                         print("problem getting cord.")
                         continue
@@ -574,39 +574,49 @@ class AiObserver:
                     print(f'current possitional cord {retCord}')
                     
                     cordGoal = self.cordGoal #[0,0,180] #x,y,z
+                    print(f'cordgoal: {cordGoal}')
                     #if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.03:
                         #cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,mz], WaitForStatic=True)
-                        
-                    mx = (cordGoal[0] - retCord[0])
+                    
+                    print(f'current possitional cord {retCord}')
+                    mx = (cordGoal[1] - retCord[1])#0=y, 1=x
                     cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,0,0], WaitForStatic=True)
                     
-                    cmdSuccess = False
-                    while not cmdSuccess:
-                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
-                    my = (cordGoal[1] - retCord[1])
-                    cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,my,0], WaitForStatic=True)
+                    time.sleep(6)
                     
                     cmdSuccess = False
                     while not cmdSuccess:
                         cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
+                    print(f'current possitional cord {retCord}')
                     mz = (cordGoal[2] - retCord[2])
                     cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,0,mz], WaitForStatic=True)
+                    
+                    time.sleep(6)
+                    
+                    cmdSuccess = False
+                    while not cmdSuccess:
+                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
+                    print(f'current possitional cord {retCord}')
+                    my = (cordGoal[0] - retCord[0]) #0=y, 1=x
+                    cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,my,0], WaitForStatic=True)
+                    
                     
                     if cmdSuccess: self.driving = False
                     print('Back at storage!')
                     #cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                     #if not cmdSuccess: continue
                     #self.driving = False
-                    time.sleep(10)
+                    time.sleep(6)
                     print(f'\n NORMALLY DROPPING PAPER \n')
                     self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
                     
-                    time.sleep(5)
+                    time.sleep(6)
                     self.Interface(ControllCMDs.Rotate, [180], WaitForStatic=True)
+                    time.sleep(6)
                     self.ArmState = ArmStates.top
                     print('done!')
                     self.mode = AiMode.Searching
-                    #self.runState.clear()
+                    self.runState.clear()
                       
                     
                     
