@@ -26,7 +26,7 @@ class Settings:
         self.DisplayRawStream = False
         self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = True #disable for testing
+        self.ReviverEnabled = False #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:

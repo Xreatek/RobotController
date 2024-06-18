@@ -37,6 +37,7 @@ class AiObserver:
         self.mode = AiMode.Searching
         
         #default set
+        self.cordGoal = list()
         self.curIrDistance = -1
         self.researchTimeout = 0
         self.ArmState = ArmStates.middle
@@ -66,14 +67,14 @@ class AiObserver:
         
         #self.imgsz = 640 #do not change requires a new model
     
-    def Interface(self, command, args=None, WaitForDone=False):
+    def Interface(self, command, args=None, WaitForStatic=False):
         #self.InterfaceDone.wait(timeout=10)
         try:
             time.sleep(0.001)
             if self.InterfaceDone.is_set():
                 if args != None:
                     self.GlobeVars.RoCmdArgs.append(args)
-                if WaitForDone: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy waitfordone also wont.
+                if WaitForStatic: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy WaitForStatic also wont.
                     self.WaitForRoStatic.set()
                     self.GlobeVars.RoCmd.append(command)
                     time.sleep(0.05)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
@@ -89,10 +90,10 @@ class AiObserver:
                 return False
         except Exception as e:
             print(f'Command interface error {e}, Trace:{traceback.format_exc()}')
-            print('Are you sure you are starting with a command that makes the robot move? Before setting WaitForDone to True?') #read "if waitfordone" line for explanation
+            print('Are you sure you are starting with a command that makes the robot move? Before setting WaitForStatic to True?') #read "if WaitForStatic" line for explanation
             self.runState.clear()
     
-    def DataInterface(self, InList=None, WaitForDone=False): #InList 0:Command, 1:Args, 2:Type return data should be in
+    def DataInterface(self, InList=None, WaitForStatic=False): #InList 0:Command, 1:Args, 2:Type return data should be in
         try:
             if len(InList) < 2:
                 print('You forgot to give args and or excpected data type. Exiting..')
@@ -105,7 +106,7 @@ class AiObserver:
             
             print('DataInterface Start')
             self.DataReq.set()
-            success = self.Interface(Command, Args, WaitForDone)
+            success = self.Interface(Command, Args, WaitForStatic)
             
             #print('Wait for data')
             Data = self.DataQueue.get(timeout=30)
@@ -232,7 +233,7 @@ class AiObserver:
                             SellectedResult = box
                             TurnAngle = TempAngle
                         elif TempAngle <= 5 and YNormEnd > LowestY:
-                            print(f'found better Y{YNormEnd}')
+                            #print(f'found better Y{YNormEnd}')
                             LowestY = YNormEnd
                             SellectedResult = box
                     #num += 1
@@ -242,14 +243,20 @@ class AiObserver:
         
             
     def AiMain(self):
+        cmdSuccess = self.Interface(ControllCMDs.RESET_Arm, [None], WaitForStatic=False)
+        cmdSuccess, retData = self.DataInterface(GetValueCMDs.ArmPos(None, ReturnTypes.list_int))
+        if cmdSuccess:
+            print(f'ArmPos data: {retData} , Type:{type(retData[0])}')
+        time.sleep(3) #give time to repos
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
-        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
+        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
        
-        self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=True) 
-        self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
+        self.Interface(ControllCMDs.OpenGrip, [4], WaitForStatic=True) 
+        self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
         
-        self.Interface(ControllCMDs.SensorIR, ['on'], WaitForDone=True)
+        self.Interface(ControllCMDs.SensorIR, ['on'], WaitForStatic=True)
+        
         print('Observer woke up')
         #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
         #if success:
@@ -259,12 +266,13 @@ class AiObserver:
         while not cmdSuccess and self.runState.is_set():
             cmdSuccess, retData = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
             if cmdSuccess:
+                self.cordGoal = retData
                 print(f'Possitional data: {retData} , Type:{type(retData[0])}')
                 break
             time.sleep(0.001)
         
         #print('clapping')
-        #self.Interface(ControllCMDs.EveryNonLiveComedyShowEver, [10], WaitForDone=True) sadly not working for some reason
+        #self.Interface(ControllCMDs.EveryNonLiveComedyShowEver, [10], WaitForStatic=True) sadly not working for some reason
         #end test
         
         self.Interface(ControllCMDs.CamExposure, [CamExposure.default])
@@ -290,13 +298,14 @@ class AiObserver:
                 if self.mode == AiMode.Searching:
                     self.Interface(ControllCMDs.ColorChange, [150,75,0,'solid'])
                     if self.driving:
-                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                         if not cmdSuccess: continue
                         self.driving = False
                         time.sleep(0.001)
                     if not self.ArmState == ArmStates.middle:
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True)
-                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
+                        self.Interface(ControllCMDs.CloseGrip, [2])
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                     if trackedPaper != None:
                         self.AllowedLostFrames = 0
@@ -305,7 +314,7 @@ class AiObserver:
                         TurnAngle = self.TurnToWad(XRelPos)
                         #print(TurnAngle)
                         if abs(TurnAngle) > 3:
-                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                         else:
                             print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.Interface(ControllCMDs.ColorChange, [25,100,25,'solid'])
@@ -314,38 +323,39 @@ class AiObserver:
                     else:
                         #continue
                         print("Turn")
-                        self.Interface(ControllCMDs.Rotate, [30], WaitForDone=True)
+                        self.Interface(ControllCMDs.Rotate, [30], WaitForStatic=True)
                 
                 
                 elif self.mode == AiMode.EnRoute:
                     
                     if not self.ArmState == ArmStates.middle:
-                        CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
+                        CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
                         if not CmdResult: #looks wierd if still open
                             continue
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True)
-                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                         
                     if trackedPaper != None:
                         self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(trackedPaper)
+                        YEndPos = trackedPaper.xyxyn[0,3]
                         YRelPos = self.GetVerticalBox(trackedPaper)
                     
                         TurnAngle = self.TurnToWad(XRelPos)
                         if abs(TurnAngle) > 5:
                             if self.driving:
-                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: continue
                                 time.sleep(0.001)
                                 self.driving = False
                                 continue
                             else: #standing still
-                                self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                                self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                               
-                        print(f'Y_Pos: {YRelPos}') #tweak value once arm has been set
-                        if YRelPos > 0.7:  #horizontal location under 40%~
-                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                        print(f'Y_Pos: {YEndPos}') #tweak value once arm has been set
+                        if YEndPos > 0.8:  #horizontal location under 40%~
+                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                             if not cmdSuccess:
                                 continue
                             time.sleep(0.001)
@@ -355,7 +365,7 @@ class AiObserver:
                             time.sleep(0.001)
                             continue
                         
-                        CmdResult = self.Interface(ControllCMDs.MoveWheels, [20], WaitForDone=False)
+                        CmdResult = self.Interface(ControllCMDs.MoveWheels, [20], WaitForStatic=False)
                         if CmdResult:
                             self.driving = True
                     else:
@@ -366,7 +376,7 @@ class AiObserver:
                             self.mode = AiMode.Searching
                         else:
                             print('EnRoute: Setting wheels speed to -15')
-                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
+                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForStatic=False)
                             if cmdResult:
                                 self.driving = True
                     #time.sleep(0.001)
@@ -374,11 +384,15 @@ class AiObserver:
                     
                 elif self.mode == AiMode.ArmDown:
                     if self.ArmState != ArmStates.downOpen:
-                        CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=True)
+                        CmdResult = self.Interface(ControllCMDs.OpenGrip, [4], WaitForStatic=True)
                         if not CmdResult: continue;#cant pick up stuff with a closed hand
                         
-                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
-                        self.Interface(ControllCMDs.SetArmPos, [180,-90], WaitForDone=True)
+                        #self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        #self.Interface(ControllCMDs.SetArmPos, [175,-95],  ic=True) #SET TO -100 ONCE CONTROLLER SCREWED
+                        
+                        self.Interface(ControllCMDs.SetArmPos, [190,-50], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [183,-75], WaitForStatic=True) #SET TO -100 ONCE CONTROLLER SCREWED
+                        self.Interface(ControllCMDs.SetArmPos, [183,-90], WaitForStatic=True) #the last part is always the hardest just like this.. for some fking reason
                         self.ArmState = ArmStates.downOpen
                         
                     #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
@@ -387,7 +401,7 @@ class AiObserver:
                        
                     if trackedPaper != None:
                         if self.driving:
-                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                             if not cmdSuccess: continue
                             self.driving = False;
                             time.sleep(0.001)
@@ -396,13 +410,13 @@ class AiObserver:
                         XRelPos = self.GetHorizontalBox(trackedPaper)
                         TurnAngle = self.TurnToWad(XRelPos)
                         if abs(TurnAngle) > 1.6:
-                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                             continue
                         
                         #now posibly center to prop
                         if abs(TurnAngle) > 1:
                             print('TURNING FOR CORRECTION')
-                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
+                            self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                             
                         cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                         if not cmdSuccess or returnedIRData > self.irFloorDistance:
@@ -421,7 +435,7 @@ class AiObserver:
                             print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.mode = AiMode.Searching
                         else:
-                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForDone=False)
+                            cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForStatic=False)
                             if cmdResult:
                                 self.driving = True
                                 print("BACKING UP!")
@@ -433,23 +447,26 @@ class AiObserver:
                     if not success or irDist > self.curIrDistance: #checking if IR didnt loose paper.
                         print(f"IR lost paper. IRDistance:{irDist}, Cur Distance:{self.curIrDistance}, ir get state:{success})")
                         if self.driving:
-                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                             if not cmdSuccess: continue
                             self.driving = False
                             continue #otherwise rotate would be off
                         
                         if trackedPaper != None:
-                            XRelPos = self.GetHorizontalBox(trackedPaper)
-                            TurnAngle = self.TurnToWad(XRelPos)/2 #way to close?
-                            if abs(TurnAngle) < 10:
-                                print('RECOVERD FROM CATASTOPIC FAILURE: Ir Sensor lost paper but should be corrected now.')
-                                self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
-                                while self.runState.is_set():
-                                    cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
-                                    if cmdSuccess:
-                                        self.curIrDistance = returnedIRData
-                                        break
-                            continue
+                            print('track paper recovery')
+                            RelXPos = self.GetHorizontalBox(trackedPaper) #middle of x on box
+                            TurnAngle = self.TurnToWad(RelXPos)/2 #way to close?
+                            print(f'Turning angle: {abs(TurnAngle)}')
+                            if abs(TurnAngle) < 3:
+                                print('check if missing ir is missing')
+                                #check y pos of paper if > 0.85 then close arm and move on
+                                RelYPos = self.GetVerticalBox(trackedPaper)
+                                print(f'RelYPos: {RelYPos}')
+                                if RelYPos >= 0.7:
+                                    print('bingo missing it with ir')
+                                
+                                continue
+                            print('not in right spot sadge')
                         
                         print('CATASTOPIC FAILURE: Ir Sensor lost paper now returing to searching..')
                         print(f'SWITCHING TO "Searching" FROM {self.mode}')
@@ -457,17 +474,17 @@ class AiObserver:
                         continue
                     else: #if still on track to paper
                         print(f'IR Distance: {irDist}')
-                        if irDist <= 7: #make sure paper wads are big
+                        if irDist <= 10: #make sure paper wads are big ig change per robot
                             while self.runState.is_set():
                                 if self.ArmState != ArmStates.downClosed:
                                     print("closing hand..")
-                                    cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForDone=False)
+                                    cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForStatic=False)
                                     if not cmdSuccess: continue;
                                     print('hand closed')
                                     self.ArmState = ArmStates.downClosed
 
                                 if self.driving:
-                                    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
+                                    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                     if not cmdSuccess: continue
                                     self.driving = False
 
@@ -477,22 +494,26 @@ class AiObserver:
                         else:
                             print(f'On track too paper IrDistance:{irDist}, driving state: {self.driving}')
                             if not self.driving:
-                                cmdSuccess = self.Interface(ControllCMDs.MoveWheels, [20], WaitForDone=False)
+                                cmdSuccess = self.Interface(ControllCMDs.MoveWheels, [20], WaitForStatic=False)
                                 if cmdSuccess:
                                     self.driving = True
                 
                 
                 elif self.mode == AiMode.HoldCheck:
                     if self.ArmState != ArmStates.carrying:
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True) 
-                        CmdState = self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) 
+                        CmdState = self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
-                    
-                    print('check if holding')    
+                        
+                    print('check if holding')
                     cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                     if not cmdSuccess or returnedIRData > 8:
+                        #if trackedPaper != None:
+                            #self.GetHorizontalBox(trackedPaper)
+                            #self.GetVerticalBox(trackedPaper)
+                            #if 
                         print(f"After moving arm up paper was lost.. IRDistance:{returnedIRData} (getIr success state:{cmdSuccess})")
                         print(f'SWITCHING TO "Searching" FROM {self.mode}')
                         self.mode = AiMode.Searching
@@ -509,24 +530,30 @@ class AiObserver:
                     
                     print(f'current possitional cord {retCord}')
                     
-                    cordGoal = [0,0,180] #x,y,z
+                    cordGoal = self.cordGoal #[0,0,180] #x,y,z
                     
-                    if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.02:
-                        mx = (cordGoal[0] - retCord[0])
-                        my = (cordGoal[1] - retCord[1])
-                        mz = (cordGoal[2] - retCord[2])
+                    mx = (cordGoal[0] - retCord[0])
+                    my = (cordGoal[1] - retCord[1])
+                    mz = (cordGoal[2] - retCord[2])
 
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,mz], WaitForDone=True)
-                        if cmdSuccess: self.driving = True
-                    else:
-                        print('back at 0')
-                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
-                        if not cmdSuccess: continue
-                        self.driving = False
-                        self.Interface(ControllCMDs.OpenGrip, [2], WaitForDone=True)
-                        self.Interface(ControllCMDs.Rotate, [180], WaitForDone=True)
-                        self.mode = AiMode.Searching
-                        #self.runState.clear()
+                    if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.03:
+                        #cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,mz], WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,0,0], WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,my,0], WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,0,mz], WaitForStatic=True)
+                    if cmdSuccess: self.driving = False
+                    print('Back at storage!')
+                    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                    if not cmdSuccess: continue
+                    self.driving = False
+                    self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
+                    
+                    time.sleep(5)
+                    self.Interface(ControllCMDs.Rotate, [180], WaitForStatic=True)
+                    self.ArmState = ArmStates.top
+                    print('done!')
+                    self.mode = AiMode.Searching
+                    #self.runState.clear()
                       
                     
                     

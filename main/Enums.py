@@ -42,6 +42,8 @@ class ControllCMDs(Enum):
     _ChassisPos = lambda a:f'chassis position ?;'
     #MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]};' #the chaos option..
     MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} z {a[2]} vxy 0.3 vz 50;' #speed(vxy) is in METERS PER SEC
+    _ArmPos = lambda a:f'robotic_arm position ?;'
+    RESET_Arm = lambda a:f'Mechanical arm recenter control;'
     
     #rotation query: https://robomaster-dev.readthedocs.io/en/latest/text_sdk/protocol_api.html#obtain-the-chassis-posture
     
@@ -52,6 +54,7 @@ class ControllCMDs(Enum):
 class GetValueCMDs(Enum):
     GetIRDistance = lambda Args, RetTyp:[ControllCMDs._GetIRDistance, Args, RetTyp] #1: args, 2:expected datatype
     ChassisPos = lambda Args, RetTyp:[ControllCMDs._ChassisPos, Args, RetTyp]#unused args
+    ArmPos = lambda Args, RetTyp:[ControllCMDs._ArmPos, Args, RetTyp]
     
 class ReturnTypes(Enum): #ingenious if i say so myself
     list_str = [str]
