@@ -248,8 +248,8 @@ class AiObserver:
             
     def AiMain(self):
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [190,20], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
-        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True) #always first set a move command before setting WaitForDone to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
        
         self.Interface(ControllCMDs.OpenGrip, [4], WaitForDone=True) 
         self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
@@ -300,8 +300,8 @@ class AiObserver:
                         self.driving = False
                         time.sleep(0.001)
                     if not self.ArmState == ArmStates.middle:
-                        self.Interface(ControllCMDs.SetArmPos, [180,80], WaitForDone=True)
-                        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
                         self.ArmState = ArmStates.middle
                     if trackedPaper != None:
                         self.AllowedLostFrames = 0
@@ -313,7 +313,7 @@ class AiObserver:
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
                         else:
                             print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
-                            state = self.Interface(ControllCMDs.ColorChange, [25,100,25,'solid'])
+                            self.Interface(ControllCMDs.ColorChange, [25,100,25,'solid'])
                             
                             self.mode = AiMode.EnRoute
                     else:
@@ -328,8 +328,8 @@ class AiObserver:
                         CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForDone=False)
                         if not CmdResult: #looks wierd if still open
                             continue
-                        self.Interface(ControllCMDs.SetArmPos, [180,0], WaitForDone=True)
-                        self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
                         self.ArmState = ArmStates.middle
                         
                     if trackedPaper != None:
@@ -349,7 +349,7 @@ class AiObserver:
                                 self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForDone=True)
                               
                         print(f'Y_Pos: {YRelPos}') #tweak value once arm has been set
-                        if YRelPos > 0.60:  #horizontal location under 40%~
+                        if YRelPos > 0.7:  #horizontal location under 40%~
                             cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
                             if not cmdSuccess:
                                 continue
@@ -489,8 +489,8 @@ class AiObserver:
                 
                 elif self.mode == AiMode.HoldCheck:
                     if self.ArmState != ArmStates.carrying:
-                        self.Interface(ControllCMDs.SetArmPos, [130,0], WaitForDone=True) 
-                        CmdState = self.Interface(ControllCMDs.SetArmPos, [120,40], WaitForDone=True)
+                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForDone=True) 
+                        CmdState = self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForDone=True)
                         if CmdState:
                             self.ArmState = ArmStates.carrying
                             continue
@@ -519,8 +519,9 @@ class AiObserver:
                     if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.02:
                         mx = (cordGoal[0] - retCord[0])
                         my = (cordGoal[1] - retCord[1])
+                        mz = (cordGoal[2] - retCord[2])
 
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my], WaitForDone=True)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,mz], WaitForDone=True)
                         if cmdSuccess: self.driving = True
                     else:
                         print('back at 0')

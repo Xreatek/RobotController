@@ -30,7 +30,7 @@ class CamExposure(Enum):
 class ControllCMDs(Enum):
     Waiting = None #(internal)
     ColorChange = lambda a:f'led control comp all r {a[0]} g {a[1]} b {a[2]} effect {a[3]};'
-    Rotate = lambda a:f'chassis move z {a[0]} z_speed 50;' #RotateDegrees; 1 arg
+    Rotate = lambda a:f'chassis move z {a[0]} vz 50;' #RotateDegrees; 1 arg
     MoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 {a[0]} w3 {a[0]} w4 {a[0]};'
     StopWheels = lambda a:f'chassis wheel w1 0 w2 0 w3 0 w4 0;'
     SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
@@ -41,7 +41,7 @@ class ControllCMDs(Enum):
     CloseGrip = lambda a:f'robotic_gripper close {a[0]};' #arg = 1-4 opening force
     _ChassisPos = lambda a:f'chassis position ?;'
     #MoveOnCord = lambda a:f'chassis speed x {a[0]} y {a[1]};' #the chaos option..
-    MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} z {a[2]} vxy 0.25 z;' #speed(vxy) is in METERS PER SEC
+    MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} z {a[2]} vxy 0.3 vz 50;' #speed(vxy) is in METERS PER SEC
     
     #rotation query: https://robomaster-dev.readthedocs.io/en/latest/text_sdk/protocol_api.html#obtain-the-chassis-posture
     
