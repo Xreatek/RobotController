@@ -148,24 +148,19 @@ class AiObserver:
     def TurnToWad(self, RelativePos): #returns angle required to turn
         return (RelativePos - 0.5) * 75 #the fov of the cam is 120
 
-    def GetHorizontalBox(self, result):
-        boxes = result.boxes
-        
-        XNormWidthStrt = round(float(boxes.xyxyn[0,0].cpu()), 3)
-        XNormWidthEnd = round(float(boxes.xyxyn[0,2].cpu()), 3)
+    def GetHorizontalBox(self, box):
+        XNormWidthStrt = round(float(box.xyxyn[0,0].cpu()), 3)
+        XNormWidthEnd = round(float(box.xyxyn[0,2].cpu()), 3)
         return XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2) #gets middle of box relative its place on screen
     
-    def GetVerticalBox(self, results): #from center
-        boxes = results[0].boxes
-        
-        YNormWidthStrt = round(float(boxes.xyxyn[0,1].cpu()), 3)
-        YNormWidthEnd = round(float(boxes.xyxyn[0,3].cpu()), 3)
+    def GetVerticalBox(self, box): #from center
+        YNormWidthStrt = round(float(box.xyxyn[0,1].cpu()), 3)
+        YNormWidthEnd = round(float(box.xyxyn[0,3].cpu()), 3)
         return YNormWidthStrt+((YNormWidthEnd - YNormWidthStrt)/2)
     
     def VisualizeFound(self, results, img):
         for r in results:
             boxes = r.boxes
-
             for box in boxes:
                 # bounding box
                 x1, y1, x2, y2 = box.xyxy[0]
@@ -234,12 +229,12 @@ class AiObserver:
 
                     if relBoxSizeX < 0.85:#85% of scren to prevent it from seleceting whole screen.
                         if TempAngle < TurnAngle and TempAngle > 5 and LowestY == 0:
-                            SellectedResult = result
+                            SellectedResult = box
                             TurnAngle = TempAngle
                         elif TempAngle <= 5 and YNormEnd > LowestY:
                             print(f'found better Y{YNormEnd}')
                             LowestY = YNormEnd
-                            SellectedResult = result
+                            SellectedResult = box
                     #num += 1
                     #print(f'Result Num: {num}')
                     
@@ -335,7 +330,7 @@ class AiObserver:
                     if trackedPaper != None:
                         self.AllowedLostFrames = 0
                         XRelPos = self.GetHorizontalBox(trackedPaper)
-                        YRelPos = self.GetVerticalBox(results)
+                        YRelPos = self.GetVerticalBox(trackedPaper)
                     
                         TurnAngle = self.TurnToWad(XRelPos)
                         if abs(TurnAngle) > 5:
@@ -514,7 +509,7 @@ class AiObserver:
                     
                     print(f'current possitional cord {retCord}')
                     
-                    cordGoal = [0,0,0] #x,y,z
+                    cordGoal = [0,0,180] #x,y,z
                     
                     if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.02:
                         mx = (cordGoal[0] - retCord[0])
@@ -528,6 +523,9 @@ class AiObserver:
                         cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForDone=True)
                         if not cmdSuccess: continue
                         self.driving = False
+                        self.Interface(ControllCMDs.OpenGrip, [2], WaitForDone=True)
+                        self.Interface(ControllCMDs.Rotate, [180], WaitForDone=True)
+                        self.mode = AiMode.Searching
                         #self.runState.clear()
                       
                     
