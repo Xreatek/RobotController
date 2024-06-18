@@ -34,6 +34,7 @@ class ControllCMDs(Enum):
     MoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 {a[0]} w3 {a[0]} w4 {a[0]};'
     StopWheels = lambda a:f'chassis wheel w1 0 w2 0 w3 0 w4 0;'
     SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
+    ArmMoveInCM = lambda a:f'robotic_arm move x {a[0]} y {a[1]};'
     CamExposure = lambda a:f'camera exposure {a[0].value};' #(use enum) default, small, medium, large
     SensorIR = lambda a:f'ir_distance_sensor measure {a[0]};' #on, off    
     _GetIRDistance = lambda a:f'ir_distance_sensor distance {a[0]} ?;'
@@ -44,6 +45,7 @@ class ControllCMDs(Enum):
     MoveOnCord = lambda a:f'chassis move x {a[0]} y {a[1]} z {a[2]} vxy 0.3 vz 50;' #speed(vxy) is in METERS PER SEC
     _ArmPos = lambda a:f'robotic_arm position ?;'
     RESET_Arm = lambda a:f'Mechanical arm recenter control;'
+    _GripState = lambda a:f'robotic_gripper status ?;'
     
     #rotation query: https://robomaster-dev.readthedocs.io/en/latest/text_sdk/protocol_api.html#obtain-the-chassis-posture
     
@@ -55,6 +57,7 @@ class GetValueCMDs(Enum):
     GetIRDistance = lambda Args, RetTyp:[ControllCMDs._GetIRDistance, Args, RetTyp] #1: args, 2:expected datatype
     ChassisPos = lambda Args, RetTyp:[ControllCMDs._ChassisPos, Args, RetTyp]#unused args
     ArmPos = lambda Args, RetTyp:[ControllCMDs._ArmPos, Args, RetTyp]
+    GripState = lambda Args, RetTyp:[ControllCMDs._GripState, Args, RetTyp]
     
 class ReturnTypes(Enum): #ingenious if i say so myself
     list_str = [str]
