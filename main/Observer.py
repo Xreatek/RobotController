@@ -150,13 +150,13 @@ class AiObserver:
         return (RelativePos - 0.5) * 75 #the fov of the cam is 120
 
     def GetHorizontalBox(self, box):
-        XNormWidthStrt = round(float(box.xyxyn[0,0].cpu()), 3)
-        XNormWidthEnd = round(float(box.xyxyn[0,2].cpu()), 3)
+        XNormWidthStrt = round(float(box.xyxyn[0,0]), 3)
+        XNormWidthEnd = round(float(box.xyxyn[0,2]), 3)
         return XNormWidthStrt+((XNormWidthEnd - XNormWidthStrt)/2) #gets middle of box relative its place on screen
     
     def GetVerticalBox(self, box): #from center
-        YNormWidthStrt = round(float(box.xyxyn[0,1].cpu()), 3)
-        YNormWidthEnd = round(float(box.xyxyn[0,3].cpu()), 3)
+        YNormWidthStrt = round(float(box.xyxyn[0,1]), 3)
+        YNormWidthEnd = round(float(box.xyxyn[0,3]), 3)
         return YNormWidthStrt+((YNormWidthEnd - YNormWidthStrt)/2)
     
     def VisualizeFound(self, results, img):
@@ -540,16 +540,20 @@ class AiObserver:
                         
                     print('check if holding')
                     cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
-                    if returnedIRData == 0: cmdSuccess = False #ir sensor doesnt work if its 0 so this just disabled it from doing anything
-                    RelXPos = self.GetHorizontalBox(trackedPaper) #middle of x on box
-                    TurnAngle = self.TurnToWad(RelXPos)/2 #way to close?
-                    RelYPos = self.GetVerticalBox(trackedPaper)
-                    CamDetectBool = (abs(TurnAngle) < 3 and RelYPos >= self.MainSettings.InClawNormalized)
-                    print(f'Turning angle: {abs(TurnAngle)}')
-                    print(f'RelYPos: {RelYPos}')
-                    print(f'Detect state: {CamDetectBool}')
                     
-                    if not cmdSuccess: continue
+                    if trackedPaper != None:
+                        RelXPos = self.GetHorizontalBox(trackedPaper) #middle of x on box
+                        TurnAngle = self.TurnToWad(RelXPos)/2 #way to close?
+                        RelYPos = self.GetVerticalBox(trackedPaper)
+                        CamDetectBool = (abs(TurnAngle) < 3 and RelYPos >= self.MainSettings.InClawNormalized)
+                        print(f'Turning angle: {abs(TurnAngle)}')
+                        print(f'RelYPos: {RelYPos}')
+                        print(f'Detect state: {CamDetectBool}')
+                    else:
+                        CamDetectBool = False
+                    print(f'IR: {returnedIRData}')
+                    
+                    if not cmdSuccess: returnedIRData = 255
                     if returnedIRData > 14 or not CamDetectBool:
                         print('HandCheck: Failed.')
 
@@ -590,9 +594,10 @@ class AiObserver:
                     
                     if cmdSuccess: self.driving = False
                     print('Back at storage!')
-                    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
-                    if not cmdSuccess: continue
-                    self.driving = False
+                    #cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                    #if not cmdSuccess: continue
+                    #self.driving = False
+                    time.sleep(10)
                     print(f'\n NORMALLY DROPPING PAPER \n')
                     self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
                     
