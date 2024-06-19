@@ -20,6 +20,8 @@ class AiMode(Enum):#id
     HoldCheck = 5
     ReturnCarry = 6
     DropCheck = 7
+    Strafe = 8
+    Returned = 9
     
 class CamExposure(Enum):
     default = 'default'
@@ -32,6 +34,8 @@ class ControllCMDs(Enum):
     ColorChange = lambda a:f'led control comp all r {a[0]} g {a[1]} b {a[2]} effect {a[3]};'
     Rotate = lambda a:f'chassis move z {a[0]} vz 50;' #RotateDegrees; 1 arg
     MoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 {a[0]} w3 {a[0]} w4 {a[0]};'
+    LEFTMoveWheels = lambda a:f'chassis wheel w1 -{a[0]} w2 {a[0]} w3 -{a[0]} w4 {a[0]};'
+    RIGHTMoveWheels = lambda a:f'chassis wheel w1 {a[0]} w2 -{a[0]} w3 {a[0]} w4 -{a[0]};'
     StopWheels = lambda a:f'chassis wheel w1 0 w2 0 w3 0 w4 0;'
     SetArmPos = lambda a:f'robotic_arm moveto x {a[0]} y {a[1]};'
     ArmMoveInCM = lambda a:f'robotic_arm move x {a[0]} y {a[1]};'

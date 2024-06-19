@@ -1,5 +1,7 @@
 from ultralytics import YOLO
 import cv2 as cv
+from cv2 import aruco
+import numpy as np
 from Enums import *
 import math
 import random
@@ -34,7 +36,16 @@ class AiObserver:
         self.DataReq = self.GlobeVars.ExpcData
         self.DataQueue = self.GlobeVars.InterfaceData
         
-        self.mode = AiMode.Searching
+        # dictionary to specify type of the marker
+        self.marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_100)
+
+        # detect the marker
+        self.param_markers = aruco.DetectorParameters()
+        
+        #self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
+        print('NON DEFAULT START MODE')
+        self.mode = AiMode.ReturnCarry
+        
         
         #default set
         self.cordGoal = list()
@@ -51,8 +62,9 @@ class AiObserver:
         while self.runState.isSet():
             try:
                 FirstFrame = self.ImgStream.popleft()
+                FirstFrame = FirstFrame[40:680, 160:1120]
                 self.imgHeight, self.imgWidth, _ = FirstFrame.shape
-                self.imgWidth = 960
+                #self.imgWidth = 960
                 break
             except IndexError: 
                 time.sleep(0.01)
@@ -191,7 +203,7 @@ class AiObserver:
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
 
-                results = self.model(InputImg, stream=False, conf=0.4, iou=0.70, verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.4, iou=0.60, verbose=False)
                 #results2 = self.model(InputImg, stream=False, conf=0.01, iou=0.6, verbose=False) #this suprisingly works
                 #results = results1 + results2
 
@@ -208,6 +220,31 @@ class AiObserver:
                 print(f'GetNewFrame Error: {e}, {traceback.format_exc()}')
                 self.runState.clear()
                 return None, None
+    
+    def FindReturnArUco(self, frame):
+        # turning the frame to grayscale-only (for efficiency)
+        gray_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        marker_corners, marker_IDs, reject = aruco.detectMarkers(gray_frame, self.marker_dict, parameters=self.param_markers)
+
+        return_NMarker = None
+        # getting conrners of markers
+        if marker_corners:
+            for ids, corners in zip(marker_IDs, marker_corners):
+                if ids == 0:
+                    cv.polylines(frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA)
+                    corners = corners.reshape(4, 2)
+                    corners = corners.astype(int)
+                    mpost = np.mean(corners, axis=0).astype(int)
+                    normalized_mid = mpost / [self.imgWidth, self.imgHeight]
+                    NormMidPos = tuple(normalized_mid)
+
+                    if self.Visualize:
+                        cv.drawMarker(frame, position=tuple(mpost), color=[0,0,255], markerType= cv.MARKER_CROSS ,thickness=4)
+                    
+                    return_NMarker = NormMidPos
+        
+        return return_NMarker
+        
     
     def GetTracked(self, results): #gets paper it has to rotate as little as possible for
         SellectedResult = None
@@ -297,7 +334,8 @@ class AiObserver:
                 trackedPaper = self.GetTracked(results)
                 if trackedPaper == None:
                     print("LOST PAPER")
-                    
+                    #continue
+                
                 #actual observer
                 if self.mode == AiMode.Searching:
                     self.Interface(ControllCMDs.ColorChange, [150,75,0,'solid'])
@@ -327,7 +365,7 @@ class AiObserver:
                     else:
                         #continue
                         print("Turn")
-                        #self.Interface(ControllCMDs.Rotate, [30], WaitForStatic=True)
+                        self.Interface(ControllCMDs.Rotate, [30], WaitForStatic=True)
                 
                 
                 elif self.mode == AiMode.EnRoute:
@@ -572,7 +610,7 @@ class AiObserver:
                     print(f'IR: {returnedIRData}')
                                     
                     if not cmdSuccess: returnedIRData = 255
-                    if returnedIRData > 14 or not CamDetectBool:
+                    if returnedIRData > 14 and not CamDetectBool:
                         print('HandCheck: Failed.')
 
                         print(f"CamDetectBool:{CamDetectBool} IRDistance:{returnedIRData} getir state:{cmdSuccess}")
@@ -587,77 +625,89 @@ class AiObserver:
                 elif self.mode == AiMode.ReturnCarry:
                     #praparing for return
                     
+                    NormBox = self.FindReturnArUco(InputImg)
+                    
+                    #didnt find box stuff
+                    if NormBox == None: #turn and continue
+                        self.Interface(ControllCMDs.Rotate, [45], WaitForStatic=True)
+                        continue #retry
+                    
+                    #found box stuff "you're outa touch im out of time" 5467st time is just heard that
+                    TurnAngle = self.TurnToWad(NormBox[0])
+                    print(f'turn offset: {TurnAngle}')
+                    if abs(TurnAngle) > 1.5:
+                        self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
+                        self.driving = False
+                    
+                    print(f'turned to box Y:{NormBox[1]}')
+                    
+                    if NormBox[1] > 0.6: #make sure it only continues to bottom code when following expected path
+                        #prepare to drop
+                        if self.driving:
+                            cmdResult = self.Interface(ControllCMDs.StopWheels, [None], WaitForStatic=True)
+                            if not cmdResult: continue #retry if failed
+                            self.driving = False
+                            
+                        #going to drop/dropping
+                        
+                        #Z AXIS ALIGNMENT
+                        cmdSuccess = False
+                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args ![y,x]!
+                        if not cmdSuccess: 
+                            print("problem getting cord.")
+                            continue
+                        print(f'Turning Angle from internal {retCord}')
+                        mz = (self.cordGoal[2] - retCord[2])#0=x, 1=y, 2=z
+                        if abs(mz) >= 1.5:
+                            cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,0,mz], WaitForStatic=True)
+                            time.sleep(3)
+                            print('Sent Z')
+                            continue
+                        self.mode = AiMode.Strafe
+                        continue
+                        
+                    else:
+                        if not self.driving:
+                            cmdState = self.Interface(ControllCMDs.MoveWheels, [self.MainSettings.Speed])
+                            if not cmdState: continue #if command didnt succeeed
+                            self.driving = True
+                            continue
+                        
+                        continue
+                
+                elif self.mode == AiMode.Strafe:
+                    #stafe to align
+                    NormBox = self.FindReturnArUco(InputImg)
+                    if NormBox != None:
+                        xFromCenter = NormBox[0]-0.5
+                        if xFromCenter > 0.1:
+                            cmdState = self.Interface(ControllCMDs.LEFTMoveWheels,[25],WaitForStatic=False)
+                            if cmdState: self.driving = True
+                            continue
+                        
+                        elif xFromCenter < -0.1:
+                            cmdState = self.Interface(ControllCMDs.RIGHTMoveWheels,[25],WaitForStatic=False)
+                            if cmdState: self.driving = True
+                            continue
+                        else:
+                            if self.driving:
+                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                                if not cmdSuccess: continue
+                                self.driving = False
+                            print('almsot done commandssss')
+                            self.runState.clear()
+                            
+                    else:#If normbox is none
+                        print('rip i am lost')
+                                
+                elif self.mode == AiMode.Returned:
+                    print('\nRETURNED\n')
+                    
                     if self.driving:
                         cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                         if not cmdSuccess: continue
                         self.driving = False
-                    
-                    cmdSuccess = False
-                    cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args ![y,x]!
-                    if not cmdSuccess: 
-                        print("problem getting cord.")
-                        continue
-                    #prepared for return
-                    cordGoal = self.cordGoal#x,y,z
-                    
-                    mx, my, mz = retCord
-                    #while abs(mx) >= 0.1 or abs(my) >= 0.1 or abs(mz) >= 0.1:
-                    print(f'cordgoal: {cordGoal}')
                         
-                    cmdSuccess = False
-                    cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args ![y,x]!
-                    if not cmdSuccess: 
-                        print("problem getting cord.")
-                        continue
-                        
-                    print(f'current possitional cord {retCord}')
-                    mz = (cordGoal[2] - retCord[2])#0=x, 1=y, 2=z
-                    if abs(mz) >= 1:
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,0,mz], WaitForStatic=True)
-                        time.sleep(3)
-                        print('Sent Z')
-                        continue
-
-
-                    cmdSuccess = False
-                    while not cmdSuccess:
-                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
-    
-                    print(f'current possitional cord {retCord}')
-                    my = (cordGoal[1] - retCord[1])#0=x, 1=y, 2=z
-                    if abs(my) >= 0.2:
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [my,0,0], WaitForStatic=True)
-                        time.sleep(3)
-                        print('Sent Y')
-                        continue
-
-
-                    cmdSuccess = False
-                    while not cmdSuccess:
-                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
-
-                    print(f'current possitional cord {retCord}')
-                    mx = (cordGoal[1] - retCord[1])#0=x, 1=y, 2=z
-                    if abs(mx) >= 0.2:
-                        cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,mx,0], WaitForStatic=True)
-                        print('Sent Y')
-                        time.sleep(3)
-                        continue
-                    
-                    #if (abs(cordGoal[0] - retCord[0])) > 0.5 or (abs(cordGoal[1] - retCord[1])) > 0.03:
-                        #cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [mx,my,mz], WaitForStatic=True)
-                    
-                    cmdSuccess = False
-                    while not cmdSuccess:
-                        cmdSuccess, retCord = self.DataInterface(GetValueCMDs.ChassisPos(None, ReturnTypes.list_float)) #no args
-                    print(f'Done with returning.   CurrentCord {retCord}, Goal:{self.cordGoal}')
-                    
-                    if cmdSuccess: self.driving = False
-                    print('Back at storage!')
-                    #cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
-                    #if not cmdSuccess: continue
-                    #self.driving = False
-                    time.sleep(6)
                     print(f'\n NORMALLY DROPPING PAPER \n')
                     self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
                     
