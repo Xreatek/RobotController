@@ -641,7 +641,7 @@ class AiObserver:
                     
                     print(f'turned to box Y:{NormBox[1]}')
                     
-                    if NormBox[1] > 0.6: #make sure it only continues to bottom code when following expected path
+                    if NormBox[1] > 0.57: #make sure it only continues to bottom code when following expected path
                         #prepare to drop
                         if self.driving:
                             cmdResult = self.Interface(ControllCMDs.StopWheels, [None], WaitForStatic=True)
@@ -662,7 +662,7 @@ class AiObserver:
                             cmdSuccess = self.Interface(ControllCMDs.MoveOnCord, [0,0,mz], WaitForStatic=True)
                             time.sleep(3)
                             print('Sent Z')
-                            continue
+                            
                         self.mode = AiMode.Strafe
                         continue
                         
@@ -679,6 +679,7 @@ class AiObserver:
                     #stafe to align
                     NormBox = self.FindReturnArUco(InputImg)
                     if NormBox != None:
+                        self.AllowedLostFrames = 0
                         xFromCenter = NormBox[0]-0.5
                         if xFromCenter > 0.1:
                             cmdState = self.Interface(ControllCMDs.LEFTMoveWheels,[25],WaitForStatic=False)
@@ -698,7 +699,15 @@ class AiObserver:
                             self.runState.clear()
                             
                     else:#If normbox is none
-                        print('rip i am lost')
+                        self.AllowedLostFrames += 1
+                        if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
+                            print('ok now i am really lost')
+                            cmdState = self.Interface(ControllCMDs.MoveWheels,[-20],WaitForStatic=False)
+                            if cmdState: self.driving = True
+                            time.sleep(4)
+                            self.mode = AiMode.ReturnCarry
+                        else:
+                            print('panic im lost!')
                                 
                 elif self.mode == AiMode.Returned:
                     print('\nRETURNED\n')
