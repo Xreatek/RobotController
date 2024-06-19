@@ -48,6 +48,7 @@ class AiObserver:
         
         
         #default set
+        self.AllowedLostFrames = 0
         self.cordGoal = list()
         self.curIrDistance = -1
         self.researchTimeout = 0
