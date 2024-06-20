@@ -231,7 +231,7 @@ class AiObserver:
         # getting conrners of markers
         if marker_corners:
             for ids, corners in zip(marker_IDs, marker_corners):
-                if ids == 0:
+                if self.robotID == 0:
                     cv.polylines(frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA)
                     corners = corners.reshape(4, 2)
                     corners = corners.astype(int)

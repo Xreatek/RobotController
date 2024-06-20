@@ -12,6 +12,10 @@ class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
         
+        print('0 or 1 make sure the other robot has the opeside value')
+        RoID = input() 
+        self.robotID = RoID
+        
         print('13 or 14')
         _ENDIP = input()
         self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
