@@ -14,11 +14,11 @@ class Settings:
         
         print('0 or 1 make sure the other robot has the opeside value')
         RoID = input() 
-        self.robotID = RoID
+        self.robotID = int(RoID)
         
-        print('13 or 14')
+        print('102 or 103')
         _ENDIP = input()
-        self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = f'192.168.8.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.RobotIp = f'10.249.48.13'
         
         #self.RobotIp = '192.168.2.7' #home
@@ -30,7 +30,7 @@ class Settings:
         self.RobotPort = '40923'
         
         self.AllowedLostFrames = 10 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
-        self.Speed = 50 #rpm only
+        self.Speed = 45 #rpm only
         self.AngleSpeed = 25
         self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: (low arm level)
         
@@ -40,7 +40,7 @@ class Settings:
         self.DisplayRawStream = False
         self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = False #disable for testing
+        self.ReviverEnabled = True #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
