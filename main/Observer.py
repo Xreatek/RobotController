@@ -21,7 +21,7 @@ class AiObserver:
         
         #object detector
         if not self.DataCollector:
-            self.model = YOLO("./Model/MXM6V9.pt") #best for now: MXM5V9
+            self.model = YOLO("./Model/MXM5V9.pt") #best for now: MXM5V9
             self.model.cuda(0)
             self.model.info()
             self.classNames = ["paper"]
@@ -85,18 +85,18 @@ class AiObserver:
     def Interface(self, command, args=None, WaitForStatic=False):
         #self.InterfaceDone.wait(timeout=10)
         try:
-            time.sleep(0.001)
+            time.sleep(0.01)
             if self.InterfaceDone.is_set():
                 if args != None:
                     self.GlobeVars.RoCmdArgs.append(args)
                 if WaitForStatic: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy WaitForStatic also wont.
                     self.WaitForRoStatic.set()
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.05)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
+                    time.sleep(0.2)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
                     self.InterfaceDone.wait(timeout=30)
                 else:
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.05)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
+                    time.sleep(0.2)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
 
                 print("Interface_Completed")
                 return True
@@ -124,7 +124,7 @@ class AiObserver:
             success = self.Interface(Command, Args, WaitForStatic)
             
             #print('Wait for data')
-            Data = self.DataQueue.get(timeout=30)
+            Data = self.DataQueue.get(timeout=15)
             Data = str(Data)
             if Data == "ok;": #sometimes it gets mixed up this should'nt happen but in rare cases it does and this atleast catches it.
                 print('recieved data mismatch this probably isnt your fault. The data the robot sent got mixed up and now it is your problem. \n(use a state check or a none check for your data.)')
@@ -154,7 +154,6 @@ class AiObserver:
             
         except Exception as e:
             print(f'Observer datainterface error {e}, Trace: {traceback.format_exc()}')
-            self.runState.clear()
             return False, None
         return success, Data
         
@@ -203,7 +202,7 @@ class AiObserver:
         while self.runState.is_set():
             try:
                 InputImg = self.ImgStream.popleft()
-                time.sleep(0.004)
+                time.sleep(0.04)
                 InputImg = self.ImgStream.popleft()
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
@@ -286,12 +285,12 @@ class AiObserver:
         
             
     def AiMain(self):
-        cmdSuccess = self.Interface(ControllCMDs.RESET_Arm, [None], WaitForStatic=False)
+        cmdSuccess = self.Interface(ControllCMDs.RESET_Arm, [None], WaitForStatic=True)
         time.sleep(2)
-        cmdSuccess, retData = self.DataInterface(GetValueCMDs.GripState(None, ReturnTypes.int))
-        if cmdSuccess:
-            print(f'GripState data: {retData}') #Type:{type(retData[0])}')
-        time.sleep(3) #give time to repos
+        #cmdSuccess, retData = self.DataInterface(GetValueCMDs.GripState(None, ReturnTypes.int))
+        #if cmdSuccess:
+        #    print(f'GripState data: {retData}') #Type:{type(retData[0])}')
+        #time.sleep(3) #give time to repos
         print('Observer Wake up')
         self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
         time.sleep(2)
@@ -299,7 +298,7 @@ class AiObserver:
         time.sleep(2)
        
         self.Interface(ControllCMDs.OpenGrip, [4], WaitForStatic=True) 
-        self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
+        self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=True)
         
         self.Interface(ControllCMDs.SensorIR, ['on'], WaitForStatic=True)
         
@@ -321,7 +320,7 @@ class AiObserver:
         #self.Interface(ControllCMDs.EveryNonLiveComedyShowEver, [10], WaitForStatic=True) sadly not working for some reason
         #end test
         
-        self.Interface(ControllCMDs.CamExposure, [CamExposure.high])
+        self.Interface(ControllCMDs.CamExposure, [CamExposure.low])
         while self.runState.isSet():
             try:
                 #print("Ai Vision")
@@ -401,7 +400,7 @@ class AiObserver:
                                 self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                               
                         print(f'Y_Pos: {YEndPos}') #tweak value once arm has been set
-                        if YEndPos > 0.8:  #horizontal location under 40%~
+                        if YEndPos > 0.7:  #horizontal location under 40%~
                             cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                             if not cmdSuccess:
                                 continue
@@ -411,10 +410,11 @@ class AiObserver:
                             self.mode = AiMode.ArmDown
                             time.sleep(0.001)
                             continue
-                        
-                        CmdResult = self.Interface(ControllCMDs.MoveWheels, [self.MainSettings.Speed], WaitForStatic=False)
-                        if CmdResult:
-                            self.driving = True
+                        else:
+                            if not self.driving:
+                                CmdResult = self.Interface(ControllCMDs.MoveWheels, [self.MainSettings.Speed], WaitForStatic=False)
+                                if CmdResult:
+                                    self.driving = True
                     else:
                         self.AllowedLostFrames += 1
                         if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
@@ -470,6 +470,7 @@ class AiObserver:
                         cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                         if not cmdSuccess or returnedIRData > self.irFloorDistance:
                             print(f"after turning paper was lost.. IRDistance:{returnedIRData} (or get ir failed:{cmdSuccess})")
+                            self.mode = AiMode.Searching
                             continue
                         
                         self.curIrDistance = returnedIRData+1 #to account for errors
@@ -493,11 +494,13 @@ class AiObserver:
                 
                 elif self.mode == AiMode.PickingUp:
                     success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
+                    overide = False
                     if irDist == 0: 
+                        overide = True
                         print('\n!!! ATTENTION !!!\nIR SENSOR BROKEN!\n')
                         success = False #means the ir sensor isnt working
                     
-                    if not success or irDist > self.curIrDistance: #checking if IR didnt loose paper.
+                    if not success or irDist > self.curIrDistance or overide: #checking if IR didnt loose paper.
                         print(f"IR lost paper. IRDistance:{irDist}, Cur Distance:{self.curIrDistance}, ir get state:{success})")
                         #if self.driving:
                         #    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
@@ -597,6 +600,7 @@ class AiObserver:
                                 print(f'\n CHECKING HAND \n')
                                 self.mode = AiMode.HoldCheck
                                 break
+                            continue
                         else:
                             print(f'On track too paper IrDistance:{irDist}, driving state: {self.driving}')
                             if not self.driving:
@@ -695,7 +699,7 @@ class AiObserver:
                         
                     else:
                         if not self.driving:
-                            cmdState = self.Interface(ControllCMDs.MoveWheels, [self.MainSettings.Speed])
+                            cmdState = self.Interface(ControllCMDs.MoveWheels, [self.MainSettings.Speed], WaitForStatic=False)
                             if not cmdState: continue #if command didnt succeeed
                             self.driving = True
                             continue
@@ -754,13 +758,13 @@ class AiObserver:
                     
                     if self.driving:
                         while self.runState.is_set():
-                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=False)
                             if not cmdSuccess: continue
                             self.driving = False
                             break
                         
                     print(f'\n NORMALLY DROPPING PAPER \n')
-                    self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
+                    self.Interface(ControllCMDs.OpenGrip, [4], WaitForStatic=True)
                     
                     #print('almsot done!')
                     #self.runState.clear()
@@ -774,7 +778,7 @@ class AiObserver:
                         break
                     time.sleep(3)
                     while self.runState.is_set():
-                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=False)
                         if not cmdSuccess: continue
                         self.driving = False
                         break
