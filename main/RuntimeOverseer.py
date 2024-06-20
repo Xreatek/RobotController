@@ -12,12 +12,12 @@ class Settings:
     def __init__(self) -> None:
         self.ConnectionType = ConnType.ExternalRouter
         
-        #print('13 or 14')
-        #_ENDIP = input()
-        #self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        print('13 or 14')
+        _ENDIP = input()
+        self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.RobotIp = f'10.249.48.13'
         
-        self.RobotIp = '192.168.2.7' #home
+        #self.RobotIp = '192.168.2.7' #home
         #self.RobotIp = '192.168.28.86' #hotspot 
         
         
