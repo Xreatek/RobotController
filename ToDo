@@ -3,4 +3,3 @@ hold check also with gripper state
 
 
 -wall detection
--stop it from backing up if it looses paper for only 1 frame
