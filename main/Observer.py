@@ -42,9 +42,9 @@ class AiObserver:
         # detect the marker
         self.param_markers = aruco.DetectorParameters()
         
-        #self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
-        print('NON DEFAULT START MODE')
-        self.mode = AiMode.ReturnCarry
+        self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
+        #print('NON DEFAULT START MODE')
+        #self.mode = AiMode.ReturnCarry
         
         
         #default set
@@ -204,7 +204,7 @@ class AiObserver:
                 InputImg = InputImg[40:680, 160:1120]#sizing to a dataset of 640 so W:640 H:480 coming model will not need conversion because it has been trained on ep core res
                 #print(f'Img size: {InputImg.shape}')
 
-                results = self.model(InputImg, stream=False, conf=0.4, iou=0.60, verbose=False)
+                results = self.model(InputImg, stream=False, conf=0.6, iou=0.60, verbose=False)
                 #results2 = self.model(InputImg, stream=False, conf=0.01, iou=0.6, verbose=False) #this suprisingly works
                 #results = results1 + results2
 
@@ -611,7 +611,8 @@ class AiObserver:
                     print(f'IR: {returnedIRData}')
                                     
                     if not cmdSuccess: returnedIRData = 255
-                    if returnedIRData > 14 and not CamDetectBool:
+                    override = True #maybe temp replace with gripper state
+                    if returnedIRData > 14 and not CamDetectBool and not override:
                         print('HandCheck: Failed.')
 
                         print(f"CamDetectBool:{CamDetectBool} IRDistance:{returnedIRData} getir state:{cmdSuccess}")
