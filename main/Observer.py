@@ -42,9 +42,9 @@ class AiObserver:
         # detect the marker
         self.param_markers = aruco.DetectorParameters()
         
-        #self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
-        print('NON DEFAULT START MODE')
-        self.mode = AiMode.ReturnCarry
+        self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
+        #print('NON DEFAULT START MODE')
+        #self.mode = AiMode.ReturnCarry
         
         
         #default set
@@ -737,10 +737,22 @@ class AiObserver:
                     print(f'\n NORMALLY DROPPING PAPER \n')
                     self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
                     
-                    print('almsot done!')
-                    self.runState.clear()
+                    #print('almsot done!')
+                    #self.runState.clear()
                     
-                    time.sleep(6)
+                    
+                    time.sleep(2)
+                    while self.runState.is_set():
+                        cmdSuccess = self.Interface(ControllCMDs.MoveWheels, [0-self.MainSettings.Speed], WaitForStatic=True)
+                        if not cmdSuccess: continue
+                        self.driving = True
+                        break
+                    time.sleep(4)
+                    while self.runState.is_set():
+                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                        if not cmdSuccess: continue
+                        self.driving = False
+                        break
                     self.Interface(ControllCMDs.Rotate, [180], WaitForStatic=True)
                     time.sleep(6)
                     self.ArmState = ArmStates.top
