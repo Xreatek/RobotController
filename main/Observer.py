@@ -715,7 +715,7 @@ class AiObserver:
                     if self.ArmState != ArmStates.top:
                         print('raising arms')
                         self.Interface(ControllCMDs.SetArmPos, [200,60], WaitForStatic=True)
-                        cmdState = self.Interface(ControllCMDs.ArmMoveInCM, [0,20], WaitForStatic=True)
+                        cmdState = self.Interface(ControllCMDs.ArmMoveInCM, [0,30], WaitForStatic=True)
                         if not cmdState: continue
                         self.ArmState = ArmStates.top
                     
@@ -747,7 +747,7 @@ class AiObserver:
                         if not cmdSuccess: continue
                         self.driving = True
                         break
-                    time.sleep(4)
+                    time.sleep(2)
                     while self.runState.is_set():
                         cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                         if not cmdSuccess: continue
