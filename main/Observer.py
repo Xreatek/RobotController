@@ -42,9 +42,9 @@ class AiObserver:
         # detect the marker
         self.param_markers = aruco.DetectorParameters()
         
-        self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
-        #print('NON DEFAULT START MODE')
-        #self.mode = AiMode.ReturnCarry
+        #self.mode = AiMode.Searching #DEFAULT SEARCHING AS START
+        print('NON DEFAULT START MODE')
+        self.mode = AiMode.ReturnCarry
         
         
         #default set
@@ -697,8 +697,8 @@ class AiObserver:
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: continue
                                 self.driving = False
-                            print('almsot done commandssss')
-                            self.runState.clear()
+                            self.mode = AiMode.Returned
+                            continue
                             
                     else:#If normbox is none
                         self.AllowedLostFrames += 1
@@ -712,15 +712,33 @@ class AiObserver:
                             print('panic im lost!')
                                 
                 elif self.mode == AiMode.Returned:
+                    if self.ArmState != ArmStates.top:
+                        print('raising arms')
+                        self.Interface(ControllCMDs.SetArmPos, [200,60], WaitForStatic=True)
+                        cmdState = self.Interface(ControllCMDs.ArmMoveInCM, [0,20], WaitForStatic=True)
+                        if not cmdState: continue
+                        self.ArmState = ArmStates.top
+                    
+                    cmdState = self.Interface(ControllCMDs.MoveWheels,[20],WaitForStatic=False)
+                    if not cmdState: continue #catch and retry
+                    self.driving = True
+                    
+                    time.sleep(3)
+                    
                     print('\nRETURNED\n')
                     
                     if self.driving:
-                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
-                        if not cmdSuccess: continue
-                        self.driving = False
+                        while self.runState.is_set():
+                            cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                            if not cmdSuccess: continue
+                            self.driving = False
+                            break
                         
                     print(f'\n NORMALLY DROPPING PAPER \n')
                     self.Interface(ControllCMDs.OpenGrip, [2], WaitForStatic=True)
+                    
+                    print('almsot done!')
+                    self.runState.clear()
                     
                     time.sleep(6)
                     self.Interface(ControllCMDs.Rotate, [180], WaitForStatic=True)
