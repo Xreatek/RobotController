@@ -75,7 +75,7 @@ class AiObserver:
             except Exception as e:
                 print(f'Ran into error while getting first frame Error:{e}, Trace:{traceback.format_exc()}')
                 self.runState.clear()
-        print("Got first frame.")    
+        print("Got first frame.")
         
         #start main observerloop
         self.AiMain()
@@ -92,11 +92,11 @@ class AiObserver:
                 if WaitForStatic: #always start with a command that moves any part on the robot otherwise "static robot" will never be true. and by proxy WaitForStatic also wont.
                     self.WaitForRoStatic.set()
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.2)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
+                    time.sleep(1)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
                     self.InterfaceDone.wait(timeout=30)
                 else:
                     self.GlobeVars.RoCmd.append(command)
-                    time.sleep(0.2)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
+                    time.sleep(1)#give controller time to start command !! INCREASE INCASE OF WIFI LATENCY !!
 
                 print("Interface_Completed")
                 return True
@@ -344,12 +344,13 @@ class AiObserver:
                 if self.mode == AiMode.Searching:
                     self.Interface(ControllCMDs.ColorChange, [150,75,0,'solid'])
                     while self.driving and self.runState.is_set():
-                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=False)
                         if not cmdSuccess: continue
                         self.driving = False
                         time.sleep(0.001)
                     if self.ArmState != ArmStates.middle:
                         self.Interface(ControllCMDs.CloseGrip, [2])
+                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True) #SET TO -100 ONCE CONTROLLER SCREWED
                         self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
                         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
@@ -441,7 +442,7 @@ class AiObserver:
                         time.sleep(0.1)
                         self.Interface(ControllCMDs.SetArmPos, [170,-75], WaitForStatic=True) #SET TO -100 ONCE CONTROLLER SCREWED
                         #time.sleep(0.002)
-                        self.Interface(ControllCMDs.ArmMoveInCM, [0,-30], WaitForStatic=True) #the last part is always the hardest just like this.. for some fking reason
+                        self.Interface(ControllCMDs.ArmMoveInCM, [-15,-15], WaitForStatic=True) #the last part is always the hardest just like this.. for some fking reason
                         self.ArmState = ArmStates.downOpen
                         
                     #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))

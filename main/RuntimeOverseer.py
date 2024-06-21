@@ -18,7 +18,7 @@ class Settings:
         
         print('102 or 103')
         _ENDIP = input()
-        self.RobotIp = f'192.168.8.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = f'192.168.77.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.RobotIp = f'10.249.48.13'
         
         #self.RobotIp = '192.168.2.7' #home
