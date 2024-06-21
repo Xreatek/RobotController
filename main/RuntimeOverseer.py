@@ -16,7 +16,7 @@ class Settings:
         RoID = input() 
         self.robotID = RoID
         
-        print('13 or 14')
+        print('enter last ip')
         _ENDIP = input()
         self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.RobotIp = f'10.249.48.13'

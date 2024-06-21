@@ -231,7 +231,7 @@ class AiObserver:
         # getting conrners of markers
         if marker_corners:
             for ids, corners in zip(marker_IDs, marker_corners):
-                if self.robotID == 0:
+                if ids == self.robotID:
                     cv.polylines(frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA)
                     corners = corners.reshape(4, 2)
                     corners = corners.astype(int)
@@ -289,7 +289,7 @@ class AiObserver:
             print(f'GripState data: {retData}') #Type:{type(retData[0])}')
         time.sleep(3) #give time to repos
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
         time.sleep(2)
         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
         time.sleep(2)
@@ -347,7 +347,7 @@ class AiObserver:
                         time.sleep(0.001)
                     if not self.ArmState == ArmStates.middle:
                         self.Interface(ControllCMDs.CloseGrip, [2])
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True)
                         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                     if trackedPaper != None:
@@ -375,7 +375,7 @@ class AiObserver:
                         CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
                         if not CmdResult: #looks wierd if still open
                             continue
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True)
                         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                         
@@ -437,7 +437,7 @@ class AiObserver:
                         time.sleep(0.1)
                         self.Interface(ControllCMDs.SetArmPos, [170,-75], WaitForStatic=True) #SET TO -100 ONCE CONTROLLER SCREWED
                         #time.sleep(0.002)
-                        self.Interface(ControllCMDs.ArmMoveInCM, [0,-20], WaitForStatic=True) #the last part is always the hardest just like this.. for some fking reason
+                        self.Interface(ControllCMDs.ArmMoveInCM, [-15,-15], WaitForStatic=True) #the last part is always the hardest just like this.. for some fking reason
                         self.ArmState = ArmStates.downOpen
                         
                     #success, result = self.DataInterface(GetValueCMDs.GetIRDistance([1], int))
