@@ -30,7 +30,7 @@ class Settings:
         self.RobotPort = '40923'
         
         self.AllowedLostFrames = 10 #how many frames is the ai allowed to not find crumpeld paper before returning to searching
-        self.Speed = 50 #rpm only
+        self.Speed = 45 #rpm only
         self.AngleSpeed = 25
         self.IrFloorDistance = 42 #1~ bellow floor distance used to know if looking at floor :mindblown: (low arm level)
         
@@ -40,7 +40,7 @@ class Settings:
         self.DisplayRawStream = False
         self.DataCollector = False #if true AI not activated
         
-        self.ReviverEnabled = False #disable for testing
+        self.ReviverEnabled = True #disable for testing
 
 class GlobalVariables:
     def __init__(self) -> None:
