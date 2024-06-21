@@ -362,9 +362,9 @@ class AiObserver:
                         if abs(TurnAngle) > 3:
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                         else:
-                            print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.Interface(ControllCMDs.ColorChange, [25,100,25,'solid'])
                             
+                            print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             self.mode = AiMode.EnRoute
                     else:
                         #continue
@@ -470,6 +470,7 @@ class AiObserver:
                         cmdSuccess, returnedIRData = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                         if not cmdSuccess or returnedIRData > self.irFloorDistance:
                             print(f"after turning paper was lost.. IRDistance:{returnedIRData} (or get ir failed:{cmdSuccess})")
+                            print(f'SWITCHING TO "Searching" FROM {self.mode}')
                             self.mode = AiMode.Searching
                             continue
                         
@@ -482,7 +483,7 @@ class AiObserver:
                         self.AllowedLostFrames += 1
                         if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
                             print("LOST PAPER RETURNING TO SEARCH")
-                            print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
+                            print(f'SWITCHING TO "PickingUp" FROM {self.mode}')
                             self.mode = AiMode.PickingUp #fuck it
                         else:
                             cmdResult = self.Interface(ControllCMDs.MoveWheels, [-15], WaitForStatic=False)
@@ -494,12 +495,11 @@ class AiObserver:
                 
                 elif self.mode == AiMode.PickingUp:
                     success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
-                    overide = False
                     if irDist == 0: 
                         print('\n!!! ATTENTION !!!\nIR sensor is broken, please reset it by reinstall it in the robomaster app. \n')
                         success = False #means the ir sensor isnt working
                     
-                    if not success or irDist > self.curIrDistance or overide: #checking if IR didnt loose paper.
+                    if not success or irDist > self.curIrDistance: #checking if IR didnt loose paper.
                         print(f"IR lost paper. IRDistance:{irDist}, Cur Distance:{self.curIrDistance}, ir get state:{success})")
                         #if self.driving:
                         #    cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
@@ -542,6 +542,7 @@ class AiObserver:
                                 cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
                                 if cmdSuccess: 
                                     self.ArmState = ArmStates.downClosed
+                                else: continue
                                 time.sleep(0.1)
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: 
@@ -554,9 +555,9 @@ class AiObserver:
                             continue
                         
                         print('FAILURE: Ir Sensor lost paper now returing to searching..')
-                        cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForStatic=False)
-                        if not cmdSuccess: continue
-                        self.ArmState = ArmStates.downClosed
+                        #cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [1], WaitForStatic=False)
+                        #if not cmdSuccess: continue
+                        #self.ArmState = ArmStates.downClosed
                         
                         if self.driving:
                             cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
@@ -573,7 +574,13 @@ class AiObserver:
                         continue
                     else: #if still on track to paper
                         print(f'IR Distance: {irDist}')
-                        if trackedPaper == None:
+                        if trackedPaper == None: #add better checking if holding
+                            if self.driving:
+                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                                if not cmdSuccess: continue
+                                self.driving = False
+                                continue #otherwise rotate would be off
+                            print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
                             self.mode = AiMode.HoldCheck
                             continue
                         
@@ -692,6 +699,7 @@ class AiObserver:
                             print('Sent Z')
                         
                         self.AllowedLostFrames = 0
+                        print(f'SWITCHING TO "Stafe" FROM {self.mode}')
                         self.mode = AiMode.Strafe
                         continue
                         
@@ -724,6 +732,7 @@ class AiObserver:
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: continue
                                 self.driving = False
+                            print(f'SWITCHING TO "Returned" FROM {self.mode}')
                             self.mode = AiMode.Returned
                             continue
                             
@@ -734,6 +743,7 @@ class AiObserver:
                             cmdState = self.Interface(ControllCMDs.MoveWheels,[-20],WaitForStatic=False)
                             if cmdState: self.driving = True
                             time.sleep(4)
+                            print(f'SWITCHING TO "ReturnCarry" FROM {self.mode}')
                             self.mode = AiMode.ReturnCarry
                         else:
                             print('panic im lost!')
@@ -784,6 +794,7 @@ class AiObserver:
                     time.sleep(2)
                     self.ArmState = ArmStates.top
                     print('done!')
+                    print(f'SWITCHING TO "Searching" FROM {self.mode}')
                     self.mode = AiMode.Searching
                     #self.runState.clear()
                       
