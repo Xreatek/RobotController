@@ -14,11 +14,11 @@ class Settings:
         
         print('0 or 1 make sure the other robot has the opeside value')
         RoID = input() 
-        self.robotID = RoID
+        self.robotID = int(RoID)
         
         print('enter last ip')
         _ENDIP = input()
-        self.RobotIp = f'10.249.48.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
+        self.RobotIp = f'192.168.77.{_ENDIP}' #school '192.168.2.7' #None or ip string '10.249.48.13' '10.249.48.14'
         #self.RobotIp = f'10.249.48.13'
         
         #self.RobotIp = '192.168.2.7' #home

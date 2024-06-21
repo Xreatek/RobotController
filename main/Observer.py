@@ -231,7 +231,7 @@ class AiObserver:
         # getting conrners of markers
         if marker_corners:
             for ids, corners in zip(marker_IDs, marker_corners):
-                if ids == self.robotID:
+                if ids == self.MainSettings.robotID:
                     cv.polylines(frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA)
                     corners = corners.reshape(4, 2)
                     corners = corners.astype(int)
@@ -459,7 +459,7 @@ class AiObserver:
                             continue
                         
                         #now posibly center to prop
-                        if abs(TurnAngle) > 1:
+                        if abs(TurnAngle) > 2:
                             print('TURNING FOR CORRECTION')
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                             
@@ -490,7 +490,7 @@ class AiObserver:
                 elif self.mode == AiMode.PickingUp:
                     success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                     if irDist == 0: 
-                        print('\n!!! ATTENTION !!!\nIR SENSOR BROKEN!\n')
+                        print('\n!!! ATTENTION !!!\nIR sensor is broken, please reset it by reinstall it in the robomaster app. \n')
                         success = False #means the ir sensor isnt working
                     if not success or irDist > self.curIrDistance: #checking if IR didnt loose paper.
                         print(f"IR lost paper. IRDistance:{irDist}, Cur Distance:{self.curIrDistance}, ir get state:{success})")
@@ -643,7 +643,7 @@ class AiObserver:
                     
                     print(f'turned to box Y:{NormBox[1]}')
                     
-                    if NormBox[1] > 0.57: #make sure it only continues to bottom code when following expected path
+                    if NormBox[1] > 0.54: #make sure it only continues to bottom code when following expected path
                         #prepare to drop
                         if self.driving:
                             cmdResult = self.Interface(ControllCMDs.StopWheels, [None], WaitForStatic=True)
@@ -723,7 +723,7 @@ class AiObserver:
                     if not cmdState: continue #catch and retry
                     self.driving = True
                     
-                    time.sleep(3)
+                    time.sleep(3.6)
                     
                     print('\nRETURNED\n')
                     
@@ -743,7 +743,7 @@ class AiObserver:
                     
                     time.sleep(2)
                     while self.runState.is_set():
-                        cmdSuccess = self.Interface(ControllCMDs.MoveWheels, [0-self.MainSettings.Speed], WaitForStatic=True)
+                        cmdSuccess = self.Interface(ControllCMDs.MoveWheels, [0-self.MainSettings.Speed], WaitForStatic=False)
                         if not cmdSuccess: continue
                         self.driving = True
                         break
@@ -758,7 +758,7 @@ class AiObserver:
                     self.ArmState = ArmStates.top
                     print('done!')
                     self.mode = AiMode.Searching
-                    self.runState.clear()
+                    #self.runState.clear()
                       
                     
                     
