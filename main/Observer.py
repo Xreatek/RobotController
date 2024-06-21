@@ -292,7 +292,7 @@ class AiObserver:
         #    print(f'GripState data: {retData}') #Type:{type(retData[0])}')
         #time.sleep(3) #give time to repos
         print('Observer Wake up')
-        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
+        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True) #always first set a move command before setting WaitForStatic to true (at start of connection)
         time.sleep(2)
         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
         time.sleep(2)
@@ -350,8 +350,7 @@ class AiObserver:
                         time.sleep(0.001)
                     if self.ArmState != ArmStates.middle:
                         self.Interface(ControllCMDs.CloseGrip, [2])
-                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True) #SET TO -100 ONCE CONTROLLER SCREWED
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True)
                         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                     if trackedPaper != None:
@@ -379,7 +378,7 @@ class AiObserver:
                         CmdResult = self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
                         if not CmdResult: #looks wierd if still open
                             continue
-                        self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True)
+                        self.Interface(ControllCMDs.SetArmPos, [220,45], WaitForStatic=True)
                         self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
                         self.ArmState = ArmStates.middle
                         
@@ -464,7 +463,7 @@ class AiObserver:
                             continue
                         
                         #now posibly center to prop
-                        if abs(TurnAngle) > 1:
+                        if abs(TurnAngle) > 2:
                             print('TURNING FOR CORRECTION')
                             self.Interface(ControllCMDs.Rotate, [TurnAngle], WaitForStatic=True)
                             
@@ -497,8 +496,7 @@ class AiObserver:
                     success, irDist = self.DataInterface(GetValueCMDs.GetIRDistance([1], ReturnTypes.int))
                     overide = False
                     if irDist == 0: 
-                        overide = True
-                        print('\n!!! ATTENTION !!!\nIR SENSOR BROKEN!\n')
+                        print('\n!!! ATTENTION !!!\nIR sensor is broken, please reset it by reinstall it in the robomaster app. \n')
                         success = False #means the ir sensor isnt working
                     
                     if not success or irDist > self.curIrDistance or overide: #checking if IR didnt loose paper.
@@ -671,8 +669,7 @@ class AiObserver:
                     
                     print(f'turned to box Y:{NormBox[1]}')
                     
-                    if NormBox[1] > 0.5: #make sure it only continues to bottom code when following expected path
-                        self.AllowedLostFrames = 0
+                    if NormBox[1] > 0.54: #make sure it only continues to bottom code when following expected path
                         #prepare to drop
                         if self.driving:
                             cmdResult = self.Interface(ControllCMDs.StopWheels, [None], WaitForStatic=True)
@@ -753,7 +750,7 @@ class AiObserver:
                     if not cmdState: continue #catch and retry
                     self.driving = True
                     
-                    time.sleep(4)
+                    time.sleep(3.5)
                     
                     print('\nRETURNED\n')
                     
