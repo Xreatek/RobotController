@@ -50,6 +50,7 @@ class AiObserver:
         #default set
         self.AllowedLostFrames = 0
         self.cordGoal = list()
+        self.LastRelTrackY = 0
         self.curIrDistance = -1
         self.researchTimeout = 0
         self.ArmState = ArmStates.middle
@@ -548,6 +549,7 @@ class AiObserver:
                                 if not cmdSuccess: 
                                     print('COULDNT STOP CAR BUT SHOULDVE GONE TO HOLD CHECK')
                                     continue
+                                self.LastRelTrackY = 0
                                 print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
                                 self.mode = AiMode.HoldCheck
                                 continue
@@ -567,6 +569,7 @@ class AiObserver:
                         
                         self.AllowedLostFrames += 1
                         if self.AllowedLostFrames >= self.MainSettings.AllowedLostFrames:
+                            self.LastRelTrackY = 0
                             print("LOST PAPER RETURNING TO SEARCH")
                             print(f'SWITCHING TO "EnRoute" FROM {self.mode}')
                             print(f'SWITCHING TO "Searching" FROM {self.mode}')
@@ -574,18 +577,29 @@ class AiObserver:
                         continue
                     else: #if still on track to paper
                         print(f'IR Distance: {irDist}')
-                        if trackedPaper == None: #add better checking if holding
+                        if trackedPaper == None: 
                             if self.driving:
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: continue
                                 self.driving = False
-                                continue #otherwise rotate would be off
+                            self.LastRelTrackY = 0
                             print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
                             self.mode = AiMode.HoldCheck
                             continue
                         
                         RelYPos = self.GetVerticalBox(trackedPaper)
                         
+                        if self.LastRelTrackY <= RelYPos-0.05: #might fix the dementia
+                            if self.driving:
+                                cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
+                                if not cmdSuccess: continue
+                                self.driving = False
+                            self.LastRelTrackY = 0
+                            print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
+                            self.mode = AiMode.HoldCheck
+                            continue
+                            
+                        self.LastRelTrackY = RelYPos
                         
                         if irDist <= 9 or RelYPos >= self.MainSettings.InClawNormalized: #make sure paper wads are big ig change per robot
                             while self.runState.is_set():
@@ -602,6 +616,7 @@ class AiObserver:
                                     if not cmdSuccess: continue
                                     self.driving = False
 
+                                self.LastRelTrackY = 0
                                 print(f'SWITCHING TO "HoldCheck" FROM {self.mode}')
                                 print(f'\n CHECKING HAND \n')
                                 self.mode = AiMode.HoldCheck
