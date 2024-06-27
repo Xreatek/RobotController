@@ -286,7 +286,7 @@ class AiObserver:
         
             
     def AiMain(self):
-        cmdSuccess = self.Interface(ControllCMDs.RESET_Arm, [None], WaitForStatic=True)
+        cmdSuccess = self.Interface(ControllCMDs.RESET_Arm, [None], WaitForStatic=False)
         time.sleep(2)
         #cmdSuccess, retData = self.DataInterface(GetValueCMDs.GripState(None, ReturnTypes.int))
         #if cmdSuccess:
@@ -326,6 +326,10 @@ class AiObserver:
             try:
                 #print("Ai Vision")
                 InputImg, results = self.GetNewFrame()
+                
+                #if not InputImg.all():
+                #    time.sleep(1)
+                #    continue
                 #                   Y(120-600) X(320-960)
                 #for wad angle 120/2=60 320/2=160
                 #Dataset collection
@@ -339,7 +343,6 @@ class AiObserver:
                 trackedPaper = self.GetTracked(results)
                 if trackedPaper == None:
                     print("LOST PAPER")
-                    #continue
                 
                 #actual observer
                 if self.mode == AiMode.Searching:
@@ -565,6 +568,7 @@ class AiObserver:
                             cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                             if not cmdSuccess: continue
                             self.driving = False
+                            continue
                         time.sleep(1)
                         
                         self.AllowedLostFrames += 1
@@ -589,7 +593,8 @@ class AiObserver:
                         
                         RelYPos = self.GetVerticalBox(trackedPaper)
                         
-                        if self.LastRelTrackY <= RelYPos-0.05: #might fix the dementia
+                        if RelYPos <= self.LastRelTrackY-0.1: #might fix the dementia
+                            print('RELPOS FUTHER')
                             if self.driving:
                                 cmdSuccess = self.Interface(ControllCMDs.StopWheels, WaitForStatic=True)
                                 if not cmdSuccess: continue
@@ -645,7 +650,7 @@ class AiObserver:
                         RelXPos = self.GetHorizontalBox(trackedPaper) #middle of x on box
                         TurnAngle = self.TurnToWad(RelXPos)/2 #way to close?
                         RelYPos = self.GetVerticalBox(trackedPaper)
-                        CamDetectBool = (abs(TurnAngle) < 3 and RelYPos >= self.MainSettings.InClawNormalized)
+                        CamDetectBool = (abs(TurnAngle) < 5 and RelYPos >= self.MainSettings.InClawNormalized)
                         print(f'Turning angle: {abs(TurnAngle)}')
                         print(f'RelYPos: {RelYPos}')
                         print(f'Detect state: {CamDetectBool}')
