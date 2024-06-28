@@ -636,6 +636,7 @@ class AiObserver:
                     
                 
                 elif self.mode == AiMode.HoldCheck:
+                    cmdSuccess = self.Interface(ControllCMDs.CloseGrip, [2], WaitForStatic=False)
                     if self.ArmState != ArmStates.carrying:
                         self.Interface(ControllCMDs.SetArmPos, [200,40], WaitForStatic=True) 
                         CmdState = self.Interface(ControllCMDs.SetArmPos, [75,50], WaitForStatic=True)
